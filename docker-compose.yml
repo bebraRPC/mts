@@ -11,11 +11,10 @@ services:
       - minio_data:/data
     command: server /data
 
-  rabbit:
-    image: rabbitmq:3
+  kafka:
+    image: confluentinc/cp-kafka
     ports:
-      - "5672:5672"
-      - "15672:15672"
+      - "9092:9092"
 
   postgres:
     image: postgres
@@ -32,13 +31,13 @@ services:
       - "8080:8080"
     depends_on:
       - minio
-      - rabbit
+      - kafka
       - postgres
 
   worker:
     build: ./worker
     depends_on:
-      - rabbit
+      - kafka
       - postgres
 
 volumes:
