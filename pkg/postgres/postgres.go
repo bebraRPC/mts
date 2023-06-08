@@ -28,7 +28,7 @@ func New(url string, opts ...Option) (*Postgres, error) {
 	postgres := &Postgres{
 		maxPoolSize:  _defaultMaxPoolSize,
 		connAttempts: _defaultConnAttempts,
-		connTimeout:  _defaultConnAttempts,
+		connTimeout:  _defaultConnTimeout,
 	}
 
 	for _, opt := range opts {
