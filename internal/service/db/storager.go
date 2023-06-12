@@ -54,7 +54,7 @@ func (s *Store) GetImageByID(imageID string) (*domain.Image, error) {
 	if err != nil {
 		if err == sql.ErrNoRows {
 			s.Logger.Error(fmt.Sprintf("Image not found in database: %v", err))
-			return nil, fmt.Errorf("Image not found in database: %v", err)
+			return nil, fmt.Errorf("image not found in database: %v", err)
 		}
 		s.Logger.Error(fmt.Sprintf("Failed to get image from database: %v", err))
 		return nil, fmt.Errorf("failed to get image from database: %w", err)
