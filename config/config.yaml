@@ -1,0 +1,18 @@
+http:
+  port: '8080'
+
+logger:
+  log_level: 'debug'
+  rollbar_env: 'go-clean-template'
+
+minio:
+  port: "9000:9000"
+
+postgres:
+  pool_max: 2
+
+kafka:
+  brokers:
+    - 'localhost:9092'
+  topic: 'my_topic'
+  group_id: 'my_consumer_group'
