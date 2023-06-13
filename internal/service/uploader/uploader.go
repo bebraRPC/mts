@@ -3,6 +3,8 @@ package uploader
 import (
 	"context"
 	"github.com/menyasosali/mts/internal/domain"
+	"github.com/menyasosali/mts/internal/service/db"
+	"github.com/menyasosali/mts/internal/service/minio"
 	"github.com/menyasosali/mts/pkg/logger"
 )
 
@@ -13,14 +15,23 @@ import (
 //
 
 type Upload struct {
-	storageClient string
-	minioClient   string
-	ctx           context.Context
-	logger        logger.Interface
+	Ctx           context.Context
+	StorageClient *db.Storager
+	MinioClient   *minio.ClientMinio
+	Logger        logger.Interface
+}
+
+func NewUploader(ctx context.Context, storageClient *db.Storager, minioClient *minio.ClientMinio, logger logger.Interface) *Upload {
+	return &Upload{
+		Ctx:           ctx,
+		StorageClient: storageClient,
+		MinioClient:   minioClient,
+		Logger:        logger,
+	}
 }
 
 func (u *Upload) UploadImage() error {
-	// РЕАЛИЗОВАТь
+	//fileURL, err := u.MinioClient.UploadFile()
 	return nil
 }
 

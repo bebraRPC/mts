@@ -31,7 +31,7 @@ func (s *Store) SaveImage(image domain.Image) error {
 		SET origin_url = $2, jpg512_url = $3, jpg256_url = $4, jpg16_base64_url = $5
 	`
 
-	_, err := s.pg.Pool.Exec(context.Background(), query, image.ID, image.URL, image.URLJpg512, image.URLJpg256, image.URLJpg16)
+	_, err := s.pg.Pool.Exec(context.Background(), query, image.ID, image.URL, image.URL512, image.URL256, image.URL16)
 	if err != nil {
 		s.Logger.Error(fmt.Sprintf("Failed to save image in database: %v", err))
 		return fmt.Errorf("failed to save image in database: %w", err)
@@ -50,7 +50,7 @@ func (s *Store) GetImageByID(imageID string) (*domain.Image, error) {
 	row := s.pg.Pool.QueryRow(context.Background(), query, imageID)
 
 	image := &domain.Image{}
-	err := row.Scan(&image.ID, &image.URL, &image.URLJpg512, &image.URLJpg256, &image.URLJpg16)
+	err := row.Scan(&image.ID, &image.URL, &image.URL512, &image.URL256, &image.URL16)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			s.Logger.Error(fmt.Sprintf("Image not found in database: %v", err))

@@ -4,4 +4,4 @@ package transport
 
 // service uploader
 
-// hhtp получают картинку закидывают в upload, в бд, минио
+// http получают картинку закидывают в upload, в бд, минио

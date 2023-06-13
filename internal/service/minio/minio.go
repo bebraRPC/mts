@@ -1,6 +1,7 @@
 package minio
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"github.com/menyasosali/mts/pkg/logger"
@@ -17,6 +18,7 @@ import (
 type InterfaceMinio interface {
 	UploadFile(io.Reader, string) (string, error)
 	GetFileURL(string) (string, error)
+	DownloadFile(string) ([]byte, error)
 	DeleteFile(string) error
 }
 
@@ -44,10 +46,10 @@ func NewMinioClient(endpoint, accessKey, secretKey, bucketName string, logger lo
 	return minioClient, nil
 }
 
-func (c *ClientMinio) UploadFile(file io.Reader, filename string) (string, error) {
+func (c *ClientMinio) UploadFile(file []byte, filename string) (string, error) {
 	contentType := mime.TypeByExtension(filepath.Ext(filename))
 
-	_, err := c.Client.PutObject(context.TODO(), c.BucketName, filename, file, -1, minio.PutObjectOptions{
+	_, err := c.Client.PutObject(context.TODO(), c.BucketName, filename, bytes.NewReader(file), -1, minio.PutObjectOptions{
 		ContentType: contentType,
 	})
 	if err != nil {
@@ -60,12 +62,19 @@ func (c *ClientMinio) UploadFile(file io.Reader, filename string) (string, error
 	return fileURL, nil
 }
 
-func (c *ClientMinio) GetFileURL(filename string) (string, error) {
-	fileURL, err := c.GetObjectURL(filename)
+func (c *ClientMinio) DownloadFile(filename string) ([]byte, error) {
+	object, err := c.Client.GetObject(context.TODO(), c.BucketName, filename, minio.GetObjectOptions{})
 	if err != nil {
-		return "", err
+		return nil, fmt.Errorf("failed to download image from MinIO: %w", err)
 	}
-	return fileURL, nil
+	defer object.Close()
+
+	data, err := io.ReadAll(object)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read image data: %w", err)
+	}
+
+	return data, nil
 }
 
 func (c *ClientMinio) GetObjectURL(filename string) (string, error) {

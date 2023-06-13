@@ -1,9 +1,9 @@
 package domain
 
 type Image struct {
-	ID        string
-	URL       string
-	URLJpg512 string
-	URLJpg256 string
-	URLJpg16  string
+	ID     string
+	URL    string
+	URL512 string
+	URL256 string
+	URL16  string
 }
