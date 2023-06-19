@@ -9,29 +9,34 @@ import (
 	"github.com/menyasosali/mts/pkg/postgres"
 )
 
-type Storager interface {
-	SaveImage(image domain.Image) error
-	GetImageByID(id string) (domain.Image, error)
+type StoreInterface interface {
+	SaveImage(image domain.ImgDescriptor) error
+	GetImageByID(id string) (domain.ImgDescriptor, error)
 }
 
 type Store struct {
-	pg     *postgres.Postgres
+	Ctx    context.Context
 	Logger logger.Interface
+	Pg     *postgres.Postgres
 }
 
-func NewStore(pg *postgres.Postgres, logger logger.Interface) *Store {
-	return &Store{pg: pg, Logger: logger}
+func NewStore(ctx context.Context, logger logger.Interface, pg *postgres.Postgres) *Store {
+	return &Store{
+		Ctx:    ctx,
+		Logger: logger,
+		Pg:     pg,
+	}
 }
 
-func (s *Store) SaveImage(image domain.Image) error {
+func (s *Store) SaveImage(image domain.ImgDescriptor) error {
 	query := `
-		INSERT INTO images (image_id, origin_url, jpg512_url, jpg256_url, jpg16_base64_url)
-		VALUES ($1, $2, $3, $4, $5)
+		INSERT INTO images (image_id, name, origin_url, jpg512_url, jpg256_url, jpg16_base64_url)
+		VALUES ($1, $2, $3, $4, $5, $6)
 		ON CONFLICT (image_id) DO UPDATE
-		SET origin_url = $2, jpg512_url = $3, jpg256_url = $4, jpg16_base64_url = $5
+		SET name = $2, origin_url = $3, jpg512_url = $4, jpg256_url = $5, jpg16_base64_url = $6
 	`
 
-	_, err := s.pg.Pool.Exec(context.Background(), query, image.ID, image.URL, image.URL512, image.URL256, image.URL16)
+	_, err := s.Pg.Pool.Exec(s.Ctx, query, image.ID, image.Name, image.URL, image.URL512, image.URL256, image.URL16)
 	if err != nil {
 		s.Logger.Error(fmt.Sprintf("Failed to save image in database: %v", err))
 		return fmt.Errorf("failed to save image in database: %w", err)
@@ -40,17 +45,17 @@ func (s *Store) SaveImage(image domain.Image) error {
 	return nil
 }
 
-func (s *Store) GetImageByID(imageID string) (*domain.Image, error) {
+func (s *Store) GetImageByID(imageID string) (*domain.ImgDescriptor, error) {
 	query := `
-		SELECT image_id, origin_url, jpg512_url, jpg256_url, jpg16_base64_url
+		SELECT image_id, name, origin_url, jpg512_url, jpg256_url, jpg16_base64_url
 		FROM images
 		WHERE image_id = $1
 	`
 
-	row := s.pg.Pool.QueryRow(context.Background(), query, imageID)
+	row := s.Pg.Pool.QueryRow(s.Ctx, query, imageID)
 
-	image := &domain.Image{}
-	err := row.Scan(&image.ID, &image.URL, &image.URL512, &image.URL256, &image.URL16)
+	image := &domain.ImgDescriptor{}
+	err := row.Scan(&image.ID, &image.Name, &image.URL, &image.URL512, &image.URL256, &image.URL16)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			s.Logger.Error(fmt.Sprintf("Image not found in database: %v", err))

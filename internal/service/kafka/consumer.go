@@ -13,15 +13,17 @@ type ImageProcessor interface {
 }
 
 type ImageConsumer struct {
+	Ctx       context.Context
+	Logger    logger.Interface
+	Processor ImageProcessor
+	Consumer  sarama.ConsumerGroup
 	Topic     string
 	Group     string
-	Consumer  sarama.ConsumerGroup
-	Processor ImageProcessor
-	Logger    logger.Interface
 }
 
-func NewImageConsumer(brokers []string, topic string, group string, processor ImageProcessor,
-	logger logger.Interface) (*ImageConsumer, error) {
+func NewImageConsumer(ctx context.Context, processor ImageProcessor, logger logger.Interface,
+	brokers []string, topic string, group string, // ctx, logger ,imageporc ...
+) (*ImageConsumer, error) { // в конф consumer cfg труктуру с
 
 	config := sarama.NewConfig()
 	consumer, err := sarama.NewConsumerGroup(brokers, group, config)
@@ -30,11 +32,12 @@ func NewImageConsumer(brokers []string, topic string, group string, processor Im
 	}
 
 	imageConsumer := &ImageConsumer{
+		Ctx:       ctx,
+		Logger:    logger,
+		Processor: processor,
+		Consumer:  consumer,
 		Topic:     topic,
 		Group:     group,
-		Consumer:  consumer,
-		Processor: processor,
-		Logger:    logger,
 	}
 
 	return imageConsumer, nil
@@ -51,8 +54,8 @@ func (c *ImageConsumer) Consume() {
 		logger:    c.Logger,
 	}
 
-	for {
-		err := c.Consumer.Consume(context.Background(), []string{c.Topic}, consumerHandler)
+	for c.Ctx.Err() != nil {
+		err := c.Consumer.Consume(c.Ctx, []string{c.Topic}, consumerHandler)
 		if err != nil {
 			c.Logger.Error(fmt.Sprintf("Failed to consume Kafka message: %v", err))
 		}

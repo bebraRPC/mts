@@ -2,7 +2,7 @@ package uploader
 
 import (
 	"context"
-	"github.com/menyasosali/mts/internal/domain"
+	"fmt"
 	"github.com/menyasosali/mts/internal/service/db"
 	"github.com/menyasosali/mts/internal/service/minio"
 	"github.com/menyasosali/mts/pkg/logger"
@@ -14,28 +14,45 @@ import (
 
 //
 
-type Upload struct {
-	Ctx           context.Context
-	StorageClient *db.Storager
-	MinioClient   *minio.ClientMinio
-	Logger        logger.Interface
+type UploadInterface interface {
+	UploadImage([]byte, string) (string, error)
+	GetImageById(string) ([]byte, error)
 }
 
-func NewUploader(ctx context.Context, storageClient *db.Storager, minioClient *minio.ClientMinio, logger logger.Interface) *Upload {
-	return &Upload{
+type Uploader struct {
+	Ctx           context.Context
+	Logger        logger.Interface
+	StorageClient *db.StoreInterface
+	ClientMinio   *minio.ClientMinio
+}
+
+func NewUploader(ctx context.Context, logger logger.Interface, storageClient *db.StoreInterface, minioClient *minio.ClientMinio) *Uploader {
+	return &Uploader{
 		Ctx:           ctx,
-		StorageClient: storageClient,
-		MinioClient:   minioClient,
 		Logger:        logger,
+		StorageClient: storageClient,
+		ClientMinio:   minioClient,
 	}
 }
 
-func (u *Upload) UploadImage() error {
-	//fileURL, err := u.MinioClient.UploadFile()
-	return nil
+func (u *Uploader) UploadImage(imageBytes []byte, filename string) (string, error) {
+	fileURL, err := u.ClientMinio.UploadFile(imageBytes, filename)
+
+	if err != nil {
+		u.Logger.Error(fmt.Sprintf("Failed to upload image to MinIO: %v", err))
+		return "", fmt.Errorf("failed to upload image to MinIO: %w", err)
+	}
+
+	return fileURL, nil
 }
 
-func (u *Upload) GetImageByID(id string) (domain.Image, error) {
-	// РЕАЛИЗОВАТь
-	return domain.Image{}, nil
+func (u *Uploader) GetImageByID(imageID string) ([]byte, error) {
+	originalImageBytes, err := u.ClientMinio.DownloadFile(imageID)
+	if err != nil {
+		errMsg := fmt.Errorf("failed to download original image: %v", err)
+		u.Logger.Error(errMsg)
+		return nil, errMsg
+	}
+
+	return originalImageBytes, nil
 }

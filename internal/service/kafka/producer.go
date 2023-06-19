@@ -1,18 +1,20 @@
 package kafka
 
 import (
+	"context"
 	"fmt"
 	"github.com/Shopify/sarama"
 	"github.com/menyasosali/mts/pkg/logger"
 )
 
 type ImageProducer struct {
-	Topic    string
-	Producer sarama.AsyncProducer
+	Ctx      context.Context
 	Logger   logger.Interface
+	Producer sarama.AsyncProducer
+	Topic    string
 }
 
-func NewImageProducer(brokers []string, topic string, logger logger.Interface) (*ImageProducer, error) {
+func NewImageProducer(ctx context.Context, logger logger.Interface, brokers []string, topic string) (*ImageProducer, error) {
 	config := &sarama.Config{}
 	producer, err := sarama.NewAsyncProducer(brokers, config)
 	if err != nil {
@@ -20,6 +22,7 @@ func NewImageProducer(brokers []string, topic string, logger logger.Interface) (
 	}
 
 	imageProducer := &ImageProducer{
+		Ctx:      ctx,
 		Topic:    topic,
 		Producer: producer,
 		Logger:   logger,

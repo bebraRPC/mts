@@ -23,12 +23,13 @@ type InterfaceMinio interface {
 }
 
 type ClientMinio struct {
+	Ctx        context.Context
+	Logger     logger.Interface
 	Client     *minio.Client
 	BucketName string
-	Logger     logger.Interface
 }
 
-func NewMinioClient(endpoint, accessKey, secretKey, bucketName string, logger logger.Interface) (*ClientMinio, error) {
+func NewMinioClient(ctx context.Context, logger logger.Interface, endpoint, accessKey, secretKey, bucketName string) (*ClientMinio, error) {
 	client, err := minio.New(endpoint, &minio.Options{
 		Creds:  credentials.NewStaticV4(accessKey, secretKey, ""),
 		Secure: true,
@@ -38,9 +39,10 @@ func NewMinioClient(endpoint, accessKey, secretKey, bucketName string, logger lo
 	}
 
 	minioClient := &ClientMinio{
+		Ctx:        ctx,
+		Logger:     logger,
 		Client:     client,
 		BucketName: bucketName,
-		Logger:     logger,
 	}
 
 	return minioClient, nil
@@ -49,7 +51,7 @@ func NewMinioClient(endpoint, accessKey, secretKey, bucketName string, logger lo
 func (c *ClientMinio) UploadFile(file []byte, filename string) (string, error) {
 	contentType := mime.TypeByExtension(filepath.Ext(filename))
 
-	_, err := c.Client.PutObject(context.TODO(), c.BucketName, filename, bytes.NewReader(file), -1, minio.PutObjectOptions{
+	_, err := c.Client.PutObject(c.Ctx, c.BucketName, filename, bytes.NewReader(file), -1, minio.PutObjectOptions{
 		ContentType: contentType,
 	})
 	if err != nil {
@@ -63,7 +65,7 @@ func (c *ClientMinio) UploadFile(file []byte, filename string) (string, error) {
 }
 
 func (c *ClientMinio) DownloadFile(filename string) ([]byte, error) {
-	object, err := c.Client.GetObject(context.TODO(), c.BucketName, filename, minio.GetObjectOptions{})
+	object, err := c.Client.GetObject(c.Ctx, c.BucketName, filename, minio.GetObjectOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to download image from MinIO: %w", err)
 	}
@@ -92,7 +94,7 @@ func (c *ClientMinio) GetObjectURL(filename string) (string, error) {
 }
 
 func (c *ClientMinio) DeleteFile(filename string) error {
-	err := c.Client.RemoveObject(context.TODO(), c.BucketName, filename, minio.RemoveObjectOptions{})
+	err := c.Client.RemoveObject(c.Ctx, c.BucketName, filename, minio.RemoveObjectOptions{})
 	if err != nil {
 		c.Logger.Error(fmt.Sprintf("Failed to delete file from MinIO: %v", err))
 		return fmt.Errorf("failed to delete file from MinIO: %w", err)
