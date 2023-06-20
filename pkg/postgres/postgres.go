@@ -62,3 +62,9 @@ func New(url string, opts ...Option) (*Postgres, error) {
 
 	return postgres, nil
 }
+
+func (p *Postgres) Close() {
+	if p.Pool != nil {
+		p.Pool.Close()
+	}
+}

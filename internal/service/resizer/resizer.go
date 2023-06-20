@@ -29,7 +29,9 @@ type Resizer struct {
 	Uploader    uploader.UploadInterface
 }
 
-func NewResizer(ctx context.Context, logger logger.Interface, consumer *kafka.ImageConsumer, client *minio.ClientMinio, uploader uploader.UploadInterface) *Resizer {
+func NewResizer(ctx context.Context, logger logger.Interface, consumer *kafka.ImageConsumer,
+	client *minio.ClientMinio, uploader uploader.UploadInterface) *Resizer {
+
 	return &Resizer{
 		Ctx:         ctx,
 		Logger:      logger,
@@ -43,7 +45,7 @@ func (r *Resizer) Start() {
 	go r.Consumer.Consume()
 }
 
-func (r *Resizer) ProcessImage(img domain.ImgDescriptor) domain.ImgDescriptor {
+func (r *Resizer) ProcessImage(img kafka.ImgKafka) domain.ImgDescriptor {
 	originalImageBytes, err := r.Uploader.GetImageById(img.ID)
 	if err != nil {
 		r.Logger.Error(err)
@@ -52,10 +54,9 @@ func (r *Resizer) ProcessImage(img domain.ImgDescriptor) domain.ImgDescriptor {
 	originalImage, _, err := image.Decode(bytes.NewReader(originalImageBytes))
 	if err != nil {
 		r.Logger.Error(fmt.Sprintf("Failed to decode original image: %v", err))
-		// return
 	}
 
-	imageType := filepath.Ext(img.URL)
+	imageType := filepath.Ext(img.OriginalURL)
 
 	resizedImage512, err := resizeTo(512, originalImage, imageType)
 	if err != nil {
@@ -72,22 +73,28 @@ func (r *Resizer) ProcessImage(img domain.ImgDescriptor) domain.ImgDescriptor {
 		r.Logger.Error(fmt.Sprintf("Failed to resize image: %v", err))
 	}
 
-	img.URL512, err = r.Uploader.UploadImage(resizedImage512, img.ID+"ID-512")
+	imgDescriptor := domain.ImgDescriptor{
+		ID:   img.ID,
+		Name: img.Name,
+		URL:  img.OriginalURL,
+	}
+
+	imgDescriptor.URL512, err = r.Uploader.UploadImage(resizedImage512, img.ID+"ID-512")
 	if err != nil {
 		r.Logger.Error(err)
 	}
 
-	img.URL256, err = r.ClientMinio.UploadFile(resizedImage256, img.ID+"ID-256")
+	imgDescriptor.URL256, err = r.ClientMinio.UploadFile(resizedImage256, img.ID+"ID-256")
 	if err != nil {
 		r.Logger.Error(err)
 	}
 
-	img.URL16, err = r.ClientMinio.UploadFile(resizedImage16, img.ID+"ID-16")
+	imgDescriptor.URL16, err = r.ClientMinio.UploadFile(resizedImage16, img.ID+"ID-16")
 	if err != nil {
 		r.Logger.Error(err)
 	}
 
-	return img
+	return imgDescriptor
 }
 
 func resizeTo(width uint, originalImage image.Image, imageType string) ([]byte, error) {

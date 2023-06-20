@@ -5,11 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/Shopify/sarama"
+	"github.com/menyasosali/mts/internal/domain"
+	"github.com/menyasosali/mts/internal/service/kafka/cfg/consumer"
 	"github.com/menyasosali/mts/pkg/logger"
 )
 
 type ImageProcessor interface {
-	ProcessImage(imageID int, originURL string)
+	ProcessImage(ImgKafka) domain.ImgDescriptor
 }
 
 type ImageConsumer struct {
@@ -17,16 +19,15 @@ type ImageConsumer struct {
 	Logger    logger.Interface
 	Processor ImageProcessor
 	Consumer  sarama.ConsumerGroup
-	Topic     string
-	Group     string
+	Cfg       consumerCfg.Config
 }
 
-func NewImageConsumer(ctx context.Context, processor ImageProcessor, logger logger.Interface,
-	brokers []string, topic string, group string, // ctx, logger ,imageporc ...
+func NewImageConsumer(ctx context.Context, processor ImageProcessor, logger logger.Interface, cfg consumerCfg.Config, // ctx, logger ,imageporc ...
 ) (*ImageConsumer, error) { // в конф consumer cfg труктуру с
-
+	// brokers []string, topic string, group string
 	config := sarama.NewConfig()
-	consumer, err := sarama.NewConsumerGroup(brokers, group, config)
+
+	consumer, err := sarama.NewConsumerGroup(cfg.Brokers, cfg.GroupID, config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Kafka consumer: %w", err)
 	}
@@ -36,26 +37,25 @@ func NewImageConsumer(ctx context.Context, processor ImageProcessor, logger logg
 		Logger:    logger,
 		Processor: processor,
 		Consumer:  consumer,
-		Topic:     topic,
-		Group:     group,
+		Cfg:       cfg,
 	}
 
 	return imageConsumer, nil
 }
 
 type imageConsumerHandler struct {
-	processor ImageProcessor
 	logger    logger.Interface
+	processor ImageProcessor
 }
 
 func (c *ImageConsumer) Consume() {
 	consumerHandler := imageConsumerHandler{
-		processor: c.Processor,
 		logger:    c.Logger,
+		processor: c.Processor,
 	}
 
 	for c.Ctx.Err() != nil {
-		err := c.Consumer.Consume(c.Ctx, []string{c.Topic}, consumerHandler)
+		err := c.Consumer.Consume(c.Ctx, []string{c.Cfg.Topic}, consumerHandler)
 		if err != nil {
 			c.Logger.Error(fmt.Sprintf("Failed to consume Kafka message: %v", err))
 		}
@@ -66,14 +66,14 @@ func (h imageConsumerHandler) Cleanup(_ sarama.ConsumerGroupSession) error { ret
 
 func (h imageConsumerHandler) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
 	for message := range claim.Messages() {
-		imageID, originalURL, err := extractImageInfo(message.Value)
+		imgKafka, err := extractImageInfo(message.Value)
 		if err != nil {
 			h.logger.Error(fmt.Sprintf("Failed to extract image info from Kafka message: %v", err))
 			session.MarkMessage(message, "")
 			continue
 		}
 
-		h.processor.ProcessImage(imageID, originalURL)
+		h.processor.ProcessImage(imgKafka)
 
 		session.MarkMessage(message, "")
 	}
@@ -81,13 +81,15 @@ func (h imageConsumerHandler) ConsumeClaim(session sarama.ConsumerGroupSession, 
 	return nil
 }
 
-func extractImageInfo(messageValue []byte) (int, string, error) {
+func extractImageInfo(messageValue []byte) (ImgKafka, error) {
 	var data map[string]interface{}
+	var imgKafka ImgKafka
 	err := json.Unmarshal(messageValue, &data)
 	if err != nil {
-		return 0, "", err
+		return imgKafka, err
 	}
-	imageID := data["imageID"].(int)
-	originURL := data["originUrl"].(string)
-	return imageID, originURL, nil
+	imgKafka.ID = data["id"].(string)
+	imgKafka.Name = data["name"].(string)
+	imgKafka.OriginalURL = data["originUrl"].(string)
+	return imgKafka, nil
 }

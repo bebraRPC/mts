@@ -1,6 +1,6 @@
 package kafka
 
-type Image struct {
+type ImgKafka struct {
 	ID          string //uuid
 	Name        string
 	OriginalURL string

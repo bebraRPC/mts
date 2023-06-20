@@ -54,7 +54,7 @@ func (s *Server) Notify() <-chan error {
 }
 
 func (s *Server) Shutdown() error {
-	ctx, cancel := context.WithTimeout(context.Background(), s.shutdownTimeout)
+	ctx, cancel := context.WithTimeout(context.TODO(), s.shutdownTimeout)
 	defer cancel()
 
 	return s.server.Shutdown(ctx)

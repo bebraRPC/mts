@@ -5,8 +5,7 @@ logger:
   log_level: 'debug'
   rollbar_env: 'go-clean-template'
 
-minio:
-  port: "9000:9000"
+
 
 postgres:
   pool_max: 2
