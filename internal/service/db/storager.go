@@ -10,8 +10,8 @@ import (
 )
 
 type StoreInterface interface {
-	SaveImage(image domain.ImgDescriptor) error
-	GetImageByID(id string) (domain.ImgDescriptor, error)
+	SaveImage(domain.ImgDescriptor) error
+	GetImageByID(string) (domain.ImgDescriptor, error)
 }
 
 type Store struct {

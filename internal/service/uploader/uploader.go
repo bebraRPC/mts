@@ -16,17 +16,17 @@ import (
 
 type UploadInterface interface {
 	UploadImage([]byte, string) (string, error)
-	GetImageById(string) ([]byte, error)
+	GetImageByID(string) ([]byte, error)
 }
 
 type Uploader struct {
 	Ctx           context.Context
 	Logger        logger.Interface
-	StorageClient *db.StoreInterface
+	StorageClient *db.Store
 	ClientMinio   *minio.ClientMinio
 }
 
-func NewUploader(ctx context.Context, logger logger.Interface, storageClient *db.StoreInterface, minioClient *minio.ClientMinio) *Uploader {
+func NewUploader(ctx context.Context, logger logger.Interface, storageClient *db.Store, minioClient *minio.ClientMinio) *Uploader {
 	return &Uploader{
 		Ctx:           ctx,
 		Logger:        logger,

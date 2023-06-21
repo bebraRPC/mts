@@ -4,7 +4,11 @@ import (
 	"context"
 	"fmt"
 	"github.com/menyasosali/mts/cmd/gate/conf"
+	"github.com/menyasosali/mts/internal/service/db"
 	"github.com/menyasosali/mts/internal/service/minio"
+	miniocfg "github.com/menyasosali/mts/internal/service/minio/cfg"
+	"github.com/menyasosali/mts/internal/service/uploader"
+	"github.com/menyasosali/mts/internal/transport"
 	"github.com/menyasosali/mts/pkg/logger"
 	"github.com/menyasosali/mts/pkg/postgres"
 	"time"
@@ -24,12 +28,21 @@ func main() {
 
 	l := logger.New(cfg.Log.Level)
 
-	pg, err := postgres.New(cfg.PG.URL)
+	storageConn, err := postgres.New(cfg.PG.URL)
 	if err != nil {
-		l.Fatal(fmt.Errorf("app - Run - postgres.New: %w", err))
+		l.Fatal(fmt.Errorf("gate - main.go - postgres.New: %w", err))
 	}
-	defer pg.Close()
+	defer storageConn.Close()
 
-	minioClient := minio.NewMinioClient(ctx, l)
+	store := db.NewStore(ctx, l, storageConn)
+
+	minioClient, err := minio.NewMinioClient(ctx, l, miniocfg.Config{})
+	if err != nil {
+		l.Fatal(fmt.Errorf("gate - main.go - minio.NewMinioClient: %w", err))
+	}
+
+	uploadService := uploader.NewUploader(ctx, l, store, minioClient)
+
+	handlers := transport.NewTransport(ctx, l, uploadService)
 
 }
