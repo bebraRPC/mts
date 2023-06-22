@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	miniocfg "github.com/menyasosali/mts/internal/service/minio/cfg"
+	"github.com/menyasosali/mts/internal/service/minio/cfg"
 	"github.com/menyasosali/mts/pkg/logger"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"

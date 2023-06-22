@@ -1,0 +1,20 @@
+postgres:
+  pool_max: 2
+  PG_URL: postgres://user:pass@localhost:5432/postgres
+
+minio:
+  endpoint: localhost:9000
+  access_key: minio-access-key
+  secret_key: minio-secret-key
+  bucket_name: mts
+
+logger:
+  log_level: 'debug'
+
+kafka:
+  brokers:
+    - localhost:9092
+  topic: image-topic
+
+http:
+  port: "8080"

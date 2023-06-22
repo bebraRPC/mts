@@ -1,9 +1,8 @@
-package uploader
+package filestorer
 
 import (
 	"context"
 	"fmt"
-	"github.com/menyasosali/mts/internal/service/db"
 	"github.com/menyasosali/mts/internal/service/minio"
 	"github.com/menyasosali/mts/pkg/logger"
 )
@@ -14,28 +13,26 @@ import (
 
 //
 
-type UploadInterface interface {
+type FileStorerInterface interface {
 	UploadImage([]byte, string) (string, error)
-	GetImageByID(string) ([]byte, error)
+	DownloadImage(string) ([]byte, error)
 }
 
-type Uploader struct {
-	Ctx           context.Context
-	Logger        logger.Interface
-	StorageClient *db.Store
-	ClientMinio   *minio.ClientMinio
+type FileStorer struct {
+	Ctx         context.Context
+	Logger      logger.Interface
+	ClientMinio *minio.ClientMinio
 }
 
-func NewUploader(ctx context.Context, logger logger.Interface, storageClient *db.Store, minioClient *minio.ClientMinio) *Uploader {
-	return &Uploader{
-		Ctx:           ctx,
-		Logger:        logger,
-		StorageClient: storageClient,
-		ClientMinio:   minioClient,
+func NewFileStorer(ctx context.Context, logger logger.Interface, minioClient *minio.ClientMinio) *FileStorer {
+	return &FileStorer{
+		Ctx:         ctx,
+		Logger:      logger,
+		ClientMinio: minioClient,
 	}
 }
 
-func (u *Uploader) UploadImage(imageBytes []byte, filename string) (string, error) {
+func (u *FileStorer) UploadImage(imageBytes []byte, filename string) (string, error) {
 	fileURL, err := u.ClientMinio.UploadFile(imageBytes, filename)
 
 	if err != nil {
@@ -46,7 +43,7 @@ func (u *Uploader) UploadImage(imageBytes []byte, filename string) (string, erro
 	return fileURL, nil
 }
 
-func (u *Uploader) GetImageByID(imageID string) ([]byte, error) {
+func (u *FileStorer) DownloadImage(imageID string) ([]byte, error) {
 	originalImageBytes, err := u.ClientMinio.DownloadFile(imageID)
 	if err != nil {
 		errMsg := fmt.Errorf("failed to download original image: %v", err)

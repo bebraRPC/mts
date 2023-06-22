@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/Shopify/sarama"
-	producerCfg "github.com/menyasosali/mts/internal/service/kafka/cfg/producer"
+	"github.com/menyasosali/mts/internal/service/kafka/cfg"
 	"github.com/menyasosali/mts/pkg/logger"
 )
 
@@ -12,10 +12,10 @@ type ImageProducer struct {
 	Ctx      context.Context
 	Logger   logger.Interface
 	Producer sarama.AsyncProducer
-	Cfg      producerCfg.Config
+	Cfg      kafkacfg.ProducerConfig
 }
 
-func NewImageProducer(ctx context.Context, logger logger.Interface, cfg producerCfg.Config) (*ImageProducer, error) {
+func NewImageProducer(ctx context.Context, logger logger.Interface, cfg kafkacfg.ProducerConfig) (*ImageProducer, error) {
 	config := &sarama.Config{}
 	producer, err := sarama.NewAsyncProducer(cfg.Brokers, config)
 	if err != nil {
@@ -35,10 +35,20 @@ func NewImageProducer(ctx context.Context, logger logger.Interface, cfg producer
 	return imageProducer, nil
 }
 
-func (p *ImageProducer) ProduceMessage(message []byte) {
-	p.Producer.Input() <- &sarama.ProducerMessage{
+func (p *ImageProducer) ProduceMessage(message []byte) error {
+	messageInput := &sarama.ProducerMessage{
 		Topic: p.Cfg.Topic,
 		Value: sarama.ByteEncoder(message),
+	}
+
+	select {
+	case p.Producer.Input() <- messageInput:
+		return nil
+	case err := <-p.Producer.Errors():
+		p.Logger.Error(fmt.Sprintf("Failed to produce Kafka message: %v", err))
+		return err.Err
+	case <-p.Ctx.Done():
+		return p.Ctx.Err()
 	}
 }
 
@@ -56,4 +66,8 @@ func (p *ImageProducer) handleErrors() {
 	for err := range p.Producer.Errors() {
 		p.Logger.Error(fmt.Sprintf("Failed to produce Kafka message: %v", err))
 	}
+}
+
+func (p *ImageProducer) Error() string {
+	return "Kafka producer error"
 }

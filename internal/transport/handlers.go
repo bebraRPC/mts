@@ -3,33 +3,61 @@ package transport
 import (
 	"context"
 	"encoding/json"
-	"github.com/menyasosali/mts/internal/domain"
+	"github.com/go-chi/chi/v5"
+	"github.com/menyasosali/mts/internal/service/db"
 	"github.com/menyasosali/mts/internal/service/kafka"
 	"io"
 	"net/http"
 
-	"github.com/menyasosali/mts/internal/service/uploader"
+	"github.com/menyasosali/mts/internal/service/filestorer"
 	"github.com/menyasosali/mts/pkg/logger"
 )
 
 //хендлеры для сервака
 
-// service uploader
+// service filestorer
 
 // http получают картинку закидывают в upload, в бд, минио
 
 type Transport struct {
-	Ctx      context.Context
-	Logger   logger.Interface
-	Uploader uploader.UploadInterface
+	Ctx        context.Context
+	Logger     logger.Interface
+	FileStorer filestorer.FileStorerInterface
+	Store      db.StoreInterface
+	Producer   *kafka.ImageProducer //Producer
 }
 
-func NewTransport(ctx context.Context, logger logger.Interface, uploader uploader.UploadInterface) *Transport {
+type ImageResponse struct {
+	ImageID     string `json:"imageID"`
+	OriginalURL string `json:"originalUrl"`
+}
+
+type ImageDescriptorResponse struct {
+	ImageID     string `json:"imageID"`
+	OriginalURL string `json:"originalUrl"`
+	Img512      string `json:"img512"`
+	Img256      string `json:"img256"`
+	Img16       string `json:"img16"`
+}
+
+func NewTransport(ctx context.Context, logger logger.Interface, fileStorer filestorer.FileStorerInterface, store db.StoreInterface,
+	producer *kafka.ImageProducer) *Transport {
+
 	return &Transport{
-		Ctx:      ctx,
-		Logger:   logger,
-		Uploader: uploader,
+		Ctx:        ctx,
+		Logger:     logger,
+		FileStorer: fileStorer,
+		Store:      store,
+		Producer:   producer,
 	}
+}
+
+func (t *Transport) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	router := chi.NewRouter()
+	router.Post("/images/upload", t.UploadImageHandler)
+	router.Get("/images/get/{id}", t.GetImageByIDHandler)
+
+	router.ServeHTTP(w, r)
 }
 
 func (t *Transport) UploadImageHandler(w http.ResponseWriter, r *http.Request) {
@@ -50,18 +78,41 @@ func (t *Transport) UploadImageHandler(w http.ResponseWriter, r *http.Request) {
 
 	filename := header.Filename
 
-	// Upload image
-	imgURL, err := t.Uploader.UploadImage(imageBytes, filename)
+	imgURL, err := t.FileStorer.UploadImage(imageBytes, filename)
 	if err != nil {
 		t.Logger.Error("Failed to upload image", err)
 		http.Error(w, "Failed to upload image", http.StatusInternalServerError)
 		return
 	}
 
-	//фикс
-	response := kafka.ImgKafka{
+	imgID, err := t.Store.UploadImage(filename, imgURL)
+	if err != nil {
+		t.Logger.Error("Failed to save image to db", err)
+		http.Error(w, "Failed to save image to db", http.StatusInternalServerError)
+		return
+	}
+
+	response := ImageResponse{
+		ImageID:     imgID,
 		OriginalURL: imgURL,
 	}
+
+	message, err := json.Marshal(response)
+	if err != nil {
+		t.Logger.Error("Failed to marshal response to JSON", err)
+		http.Error(w, "Failed to marshal response to JSON", http.StatusInternalServerError)
+		return
+	}
+
+	// в producer кидаю response в topic
+	err = t.Producer.ProduceMessage(message)
+	if err != nil {
+		t.Logger.Error("Failed to produce message to Kafka topic", err)
+		http.Error(w, "Failed to produce message to Kafka topic", http.StatusInternalServerError)
+		return
+	}
+
+	// в docker-compose при диплое образа kafka manager проверяем есть ли topic или при рестарте создаем topic из config
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
@@ -74,19 +125,21 @@ func (t *Transport) GetImageByIDHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	img, err := t.Uploader.GetImageById(imageID)
+	img, err := t.Store.GetImageByID(imageID)
 	if err != nil {
-		t.Logger.Error("Failed to get image by ID", err)
-		http.Error(w, "Failed to get image by ID", http.StatusInternalServerError)
-		return
-	}
-	if img == nil {
-		http.Error(w, "Image not found", http.StatusNotFound)
+		t.Logger.Error("Failed to get image from db", err)
+		http.Error(w, "Failed to get image from db", http.StatusInternalServerError)
 		return
 	}
 
 	//фикс
-	response := domain.ImgDescriptor{}
+	response := ImageDescriptorResponse{
+		ImageID:     imageID,
+		OriginalURL: img.URL,
+		Img512:      img.URL512,
+		Img256:      img.URL256,
+		Img16:       img.URL16,
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)

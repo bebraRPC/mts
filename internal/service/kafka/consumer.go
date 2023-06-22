@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"github.com/Shopify/sarama"
 	"github.com/menyasosali/mts/internal/domain"
-	"github.com/menyasosali/mts/internal/service/kafka/cfg/consumer"
+	"github.com/menyasosali/mts/internal/service/kafka/cfg"
 	"github.com/menyasosali/mts/pkg/logger"
 )
 
@@ -19,10 +19,10 @@ type ImageConsumer struct {
 	Logger    logger.Interface
 	Processor ImageProcessor
 	Consumer  sarama.ConsumerGroup
-	Cfg       consumerCfg.Config
+	Cfg       kafkacfg.ConsumerConfig
 }
 
-func NewImageConsumer(ctx context.Context, processor ImageProcessor, logger logger.Interface, cfg consumerCfg.Config, // ctx, logger ,imageporc ...
+func NewImageConsumer(ctx context.Context, processor ImageProcessor, logger logger.Interface, cfg kafkacfg.ConsumerConfig, // ctx, logger ,imageporc ...
 ) (*ImageConsumer, error) { // в конф consumer cfg труктуру с
 	// brokers []string, topic string, group string
 	config := sarama.NewConfig()
@@ -59,6 +59,7 @@ func (c *ImageConsumer) Consume() {
 		if err != nil {
 			c.Logger.Error(fmt.Sprintf("Failed to consume Kafka message: %v", err))
 		}
+
 	}
 }
 func (h imageConsumerHandler) Setup(_ sarama.ConsumerGroupSession) error   { return nil }
