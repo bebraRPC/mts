@@ -66,8 +66,6 @@ func main() {
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt)
 
-	<-stop
-
 	select {
 	case s := <-stop:
 		l.Info("worker - main.go - signal: " + s.String())
