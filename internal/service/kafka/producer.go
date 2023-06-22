@@ -67,7 +67,3 @@ func (p *ImageProducer) handleErrors() {
 		p.Logger.Error(fmt.Sprintf("Failed to produce Kafka message: %v", err))
 	}
 }
-
-func (p *ImageProducer) Error() string {
-	return "Kafka producer error"
-}

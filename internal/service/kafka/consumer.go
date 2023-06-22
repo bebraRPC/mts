@@ -22,9 +22,8 @@ type ImageConsumer struct {
 	Cfg       kafkacfg.ConsumerConfig
 }
 
-func NewImageConsumer(ctx context.Context, processor ImageProcessor, logger logger.Interface, cfg kafkacfg.ConsumerConfig, // ctx, logger ,imageporc ...
-) (*ImageConsumer, error) { // в конф consumer cfg труктуру с
-	// brokers []string, topic string, group string
+func NewImageConsumer(ctx context.Context, logger logger.Interface, processor ImageProcessor, cfg kafkacfg.ConsumerConfig,
+) (*ImageConsumer, error) {
 	config := sarama.NewConfig()
 
 	consumer, err := sarama.NewConsumerGroup(cfg.Brokers, cfg.GroupID, config)
@@ -46,6 +45,20 @@ func NewImageConsumer(ctx context.Context, processor ImageProcessor, logger logg
 type imageConsumerHandler struct {
 	logger    logger.Interface
 	processor ImageProcessor
+}
+
+func (c *ImageConsumer) Start() {
+	go c.Consume()
+}
+
+func (c *ImageConsumer) Close() error {
+	if c.Consumer != nil {
+		err := c.Consumer.Close()
+		if err != nil {
+			return fmt.Errorf("failed to close Kafka consumer: %w", err)
+		}
+	}
+	return nil
 }
 
 func (c *ImageConsumer) Consume() {

@@ -13,74 +13,16 @@ import (
 	"github.com/menyasosali/mts/pkg/httpserver"
 	"github.com/menyasosali/mts/pkg/logger"
 	"github.com/menyasosali/mts/pkg/postgres"
-	"gopkg.in/yaml.v3"
-	"io"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
 )
 
-type Config struct {
-	Postgres PostgresConfig `yaml:"postgres"`
-	Minio    MinioConfig    `yaml:"minio"`
-	Kafka    KafkaConfig    `yaml:"kafka"`
-	Log      LogConfig      `yaml:"logger"`
-	HTTP     HTTPConfig     `yaml:"http"`
-}
-
-type PostgresConfig struct {
-	PoolMax int    `env-required:"true" yaml:"pool_max" env:"PG_POOL_MAX"`
-	URL     string `env-required:"true"                 env:"PG_URL"`
-}
-
-type MinioConfig struct {
-	Endpoint   string `yaml:"endpoint"`
-	AccessKey  string `yaml:"access_key"`
-	SecretKey  string `yaml:"secret_key"`
-	BucketName string `yaml:"bucket_name"`
-}
-
-type LogConfig struct {
-	Level string `env-required:"true" yaml:"log_level"   env:"LOG_LEVEL"`
-}
-
-type KafkaConfig struct {
-	Brokers []string `yaml:"brokers"`
-	Topic   string   `yaml:"topic"`
-}
-
-type HTTPConfig struct {
-	Port string `yaml:"port"`
-}
-
-func LoadConfig(env string) (Config, error) {
-	configFile := fmt.Sprintf("./cmd/gate/env/%s/config.yaml", env)
-	file, err := os.Open(configFile)
-	if err != nil {
-		return Config{}, fmt.Errorf("failed to open config file: %w", err)
-	}
-	defer file.Close()
-
-	data, err := io.ReadAll(file)
-	if err != nil {
-		return Config{}, fmt.Errorf("failed to read config file: %w", err)
-	}
-
-	var config Config
-	err = yaml.Unmarshal(data, &config)
-	if err != nil {
-		return Config{}, fmt.Errorf("failed to unmarshal config data: %w", err)
-	}
-
-	return config, nil
-}
-
 func main() {
 	ctx := context.Background()
 
-	// Load configuration
-	env := "dev" // Set the desired environment
+	env := "dev"
 	cfg, err := LoadConfig(env)
 	if err != nil {
 		log.Fatal("Failed to load config:", err)
@@ -89,6 +31,7 @@ func main() {
 	// Logger
 	l := logger.NewLogger(cfg.Log.Level)
 
+	// Postgres
 	pg, err := postgres.New(cfg.Postgres.URL, postgres.MaxPoolSize(cfg.Postgres.PoolMax))
 	if err != nil {
 		l.Fatal(fmt.Errorf("app - Run - postgres.New: %w", err))
@@ -136,9 +79,9 @@ func main() {
 
 	select {
 	case s := <-stop:
-		l.Info("app - Run - signal: " + s.String())
+		l.Info("worker - main.go - signal: " + s.String())
 	case err = <-httpServer.Notify():
-		l.Error(fmt.Errorf("app - Run - httpServer.Notify: %w", err))
+		l.Error(fmt.Errorf("worker - main.go - httpServer.Notify: %w", err))
 	}
 
 	// Shutdown
