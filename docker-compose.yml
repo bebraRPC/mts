@@ -26,16 +26,18 @@ services:
       - postgres_data:/var/lib/postgresql/data
 
   gate:
-    build: ./gate
-    ports:
-      - "8080:8080"
+    build:
+      context: .
+      dockerfile: Dockerfile
     depends_on:
       - minio
       - kafka
       - postgres
 
   worker:
-    build: ./worker
+    build:
+      context: .
+      dockerfile: Dockerfile
     depends_on:
       - kafka
       - postgres
