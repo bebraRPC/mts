@@ -1,0 +1,54 @@
+version: "3"
+services:
+  minio:
+    image: minio/minio
+    ports:
+      - "9000:9000"
+    environment:
+      - MINIO_ACCESS_KEY=accesskey
+      - MINIO_SECRET_KEY=secretkey
+    volumes:
+      - minio_data:/data
+    command: server /data
+
+  kafka:
+    image: confluentinc/cp-kafka
+    ports:
+      - "9092:9092"
+    environment:
+      - KAFKA_ZOOKEEPER_CONNECT=zookeeper:2181
+      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
+
+  postgres:
+    image: postgres
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=images
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  gate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      - minio
+      - kafka
+      - postgres
+    volumes:
+      - ./cmd/gate/env:/app/env
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      - kafka
+      - postgres
+    volumes:
+      - ./cmd/worker/env:/app/env
+
+volumes:
+  minio_data:
+  postgres_data:
