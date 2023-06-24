@@ -1,18 +1,11 @@
 package main
 
 import (
-	"context"
 	"fmt"
-	"github.com/menyasosali/mts/internal/service/db"
-	"github.com/menyasosali/mts/internal/service/filestorer"
-	"github.com/menyasosali/mts/internal/service/kafka"
-	"github.com/menyasosali/mts/internal/service/kafka/cfg"
-	"github.com/menyasosali/mts/internal/service/minio"
-	"github.com/menyasosali/mts/internal/service/minio/cfg"
-	"github.com/menyasosali/mts/internal/transport"
-	"github.com/menyasosali/mts/pkg/httpserver"
-	"github.com/menyasosali/mts/pkg/logger"
-	"github.com/menyasosali/mts/pkg/postgres"
+	"github.com/fsnotify/fsnotify"
+	"github.com/ilyakaznacheev/cleanenv"
+	"github.com/menyasosali/mts/config"
+	"github.com/menyasosali/mts/internal/gate"
 	"log"
 	"os"
 	"os/signal"
@@ -20,73 +13,64 @@ import (
 )
 
 func main() {
-	ctx := context.Background()
+	cfg := &config.GateConfig{}
 
-	env := "dev"
-	cfg, err := LoadConfig(env)
+	cfgPath := "./config/config.yml"
+
+	err := cleanenv.ReadConfig(cfgPath, cfg)
 	if err != nil {
-		log.Fatal("Failed to load config:", err)
+		log.Fatalf("Failed to read config file: %v", err)
 	}
 
-	// Logger
-	l := logger.NewLogger(cfg.Log.Level)
+	fmt.Println("Config:")
+	fmt.Printf("%+v\n", cfg)
 
-	// Postgres
-	pg, err := postgres.New(cfg.Postgres.URL, postgres.MaxPoolSize(cfg.Postgres.PoolMax))
+	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		l.Fatal(fmt.Errorf("app - Run - postgres.New: %w", err))
+		log.Fatalf("Failed to create watcher: %v", err)
 	}
-	defer pg.Close()
+	defer watcher.Close()
 
-	// MinIO
-	minioConfig := miniocfg.Config{
-		Endpoint:   cfg.Minio.Endpoint,
-		AccessKey:  cfg.Minio.AccessKey,
-		SecretKey:  cfg.Minio.SecretKey,
-		BucketName: cfg.Minio.BucketName,
-	}
-	minioClient, err := minio.NewMinioClient(ctx, l, minioConfig)
+	err = watcher.Add(cfgPath)
 	if err != nil {
-		log.Fatal("Failed to create MinIO client:", err)
+		log.Fatalf("Failed to add config file to watcher: %v", err)
 	}
 
-	// Kafka Producer
-	kafkaProducerConfig := kafkacfg.ProducerConfig{
-		Brokers: cfg.Kafka.Brokers,
-		Topic:   cfg.Kafka.Topic,
-	}
-	kafkaProducer, err := kafka.NewImageProducer(ctx, l, kafkaProducerConfig)
-	if err != nil {
-		log.Fatal("Failed to create Kafka producer:", err)
-	}
-	defer kafkaProducer.Close()
+	exit := make(chan os.Signal, 1)
+	signal.Notify(exit, os.Interrupt, syscall.SIGTERM)
 
-	// Uploader
-	fileStorer := filestorer.NewFileStorer(ctx, l, minioClient)
+	go func() {
+		for {
+			select {
+			case event, ok := <-watcher.Events:
+				if !ok {
+					return
+				}
 
-	// DB Store
-	store := db.NewStore(ctx, l, pg)
+				if event.Op&fsnotify.Write == fsnotify.Write {
+					// Файл конфигурации был изменен
+					fmt.Println("Config file changed. Reloading...")
 
-	// Transport
-	newTransport := transport.NewTransport(ctx, l, fileStorer, store, kafkaProducer)
+					// Перечитываем конфигурацию
+					err := cleanenv.ReadConfig(cfgPath, cfg)
+					if err != nil {
+						log.Printf("Failed to reload config file: %v", err)
+					} else {
+						fmt.Println("Config reloaded:")
+						fmt.Printf("%+v\n", cfg)
+					}
+				}
+			case err, ok := <-watcher.Errors:
+				if !ok {
+					return
+				}
+				log.Printf("Watcher error: %v", err)
+			}
+		}
+	}()
 
-	// HTTP Server
-	httpServer := httpserver.NewServer(ctx, l, newTransport, httpserver.Port(cfg.HTTP.Port))
+	gate.Run(cfg)
 
-	// Waiting signal
-	stop := make(chan os.Signal, 1)
-	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
-
-	select {
-	case s := <-stop:
-		l.Info("worker - main.go - signal: " + s.String())
-	case err = <-httpServer.Notify():
-		l.Error(fmt.Errorf("worker - main.go - httpServer.Notify: %w", err))
-	}
-
-	// Shutdown
-	err = httpServer.Shutdown()
-	if err != nil {
-		log.Fatal("HTTP server shutdown error:", err)
-	}
+	<-exit
+	fmt.Println("Gate shutdown")
 }

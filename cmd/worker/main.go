@@ -1,76 +1,76 @@
 package main
 
 import (
-	"context"
 	"fmt"
-	"github.com/menyasosali/mts/internal/service/filestorer"
-	"github.com/menyasosali/mts/internal/service/kafka"
-	"github.com/menyasosali/mts/internal/service/kafka/cfg"
-	"github.com/menyasosali/mts/internal/service/minio"
-	"github.com/menyasosali/mts/internal/service/minio/cfg"
-	"github.com/menyasosali/mts/internal/service/resizer"
-	"github.com/menyasosali/mts/pkg/logger"
+	"github.com/fsnotify/fsnotify"
+	"github.com/ilyakaznacheev/cleanenv"
+	"github.com/menyasosali/mts/config"
+	"github.com/menyasosali/mts/internal/worker"
 	"log"
 	"os"
 	"os/signal"
-	"time"
+	"syscall"
 )
 
 func main() {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
+	cfg := &config.WorkerConfig{}
 
-	cfg, err := LoadConfig("dev")
+	cfgPath := "./config/config.yml"
+
+	err := cleanenv.ReadConfig(cfgPath, cfg)
 	if err != nil {
-		fmt.Errorf("failed to load config: %w", err)
+		log.Fatalf("Failed to read config file: %v", err)
 	}
 
-	// Logger
-	l := logger.NewLogger(cfg.Log.Level)
+	fmt.Println("Config:")
+	fmt.Printf("%+v\n", cfg)
 
-	// Kafka Consumer
-	kafkaConsumerConfig := kafkacfg.ConsumerConfig{
-		Brokers: cfg.Kafka.Brokers,
-		Topic:   cfg.Kafka.Topic,
-		GroupID: cfg.Kafka.GroupID,
-	}
-
-	// MinIO
-	minioConfig := miniocfg.Config{
-		Endpoint:   cfg.Minio.Endpoint,
-		AccessKey:  cfg.Minio.AccessKey,
-		SecretKey:  cfg.Minio.SecretKey,
-		BucketName: cfg.Minio.BucketName,
-	}
-	minioClient, err := minio.NewMinioClient(ctx, l, minioConfig)
+	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		l.Error(fmt.Errorf("failed to create MinIO client: %w", err))
+		log.Fatalf("Failed to create watcher: %v", err)
 	}
+	defer watcher.Close()
 
-	// File Storer
-	fileStorer := filestorer.NewFileStorer(ctx, l, minioClient)
-
-	// Image Resizer
-	processor := resizer.NewResizer(ctx, l, minioClient, fileStorer)
-
-	// Kafka consumer
-	kafkaConsumer, err := kafka.NewImageConsumer(ctx, l, processor, kafkaConsumerConfig)
+	err = watcher.Add(cfgPath)
 	if err != nil {
-		log.Fatal("Failed to create Kafka consumer:", err)
-	}
-	defer kafkaConsumer.Close()
-
-	kafkaConsumer.Start()
-
-	// Graceful shutdown
-	stop := make(chan os.Signal, 1)
-	signal.Notify(stop, os.Interrupt)
-
-	<-stop
-
-	select {
-	case s := <-stop:
-		l.Info("worker - main.go - signal: " + s.String())
+		log.Fatalf("Failed to add config file to watcher: %v", err)
 	}
 
+	exit := make(chan os.Signal, 1)
+	signal.Notify(exit, os.Interrupt, syscall.SIGTERM)
+
+	go func() {
+		for {
+			select {
+			case event, ok := <-watcher.Events:
+				if !ok {
+					return
+				}
+
+				if event.Op&fsnotify.Write == fsnotify.Write {
+					// Файл конфигурации был изменен
+					fmt.Println("Config file changed. Reloading...")
+
+					// Перечитываем конфигурацию
+					err := cleanenv.ReadConfig(cfgPath, cfg)
+					if err != nil {
+						log.Printf("Failed to reload config file: %v", err)
+					} else {
+						fmt.Println("Config reloaded:")
+						fmt.Printf("%+v\n", cfg)
+					}
+				}
+			case err, ok := <-watcher.Errors:
+				if !ok {
+					return
+				}
+				log.Printf("Watcher error: %v", err)
+			}
+		}
+	}()
+
+	worker.Run(cfg)
+
+	<-exit
+	fmt.Println("Worker shutdown")
 }

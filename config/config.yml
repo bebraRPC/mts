@@ -4,8 +4,8 @@ postgres:
 
 minio:
   endpoint: localhost:9000
-  access_key: minio-access-key
-  secret_key: minio-secret-key
+  access_key: accesskey
+  secret_key: secretkey
   bucket_name: mts
 
 logger:
@@ -15,6 +15,7 @@ kafka:
   brokers:
     - localhost:9092
   topic: image-topic
+  group_id: worker-group
 
 http:
   port: "8080"

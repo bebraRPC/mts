@@ -30,24 +30,24 @@ services:
 
   gate:
     build:
-      context: .
+      context: ./internal/gate
       dockerfile: Dockerfile
     depends_on:
       - minio
       - kafka
       - postgres
     volumes:
-      - ./cmd/gate/env:/app/env
+      - ./config/:/app/config
 
   worker:
     build:
-      context: .
+      context: ./internal/worker
       dockerfile: Dockerfile
     depends_on:
       - kafka
       - postgres
     volumes:
-      - ./cmd/worker/env:/app/env
+      - ./config/:/app/config
 
 volumes:
   minio_data:
