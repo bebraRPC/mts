@@ -1,6 +1,6 @@
 postgres:
   pool_max: 2
-  PG_URL: postgres://user:pass@localhost:5432/postgres
+  url: "postgres://user:pass@localhost:5432/postgres"
 
 minio:
   endpoint: localhost:9000
