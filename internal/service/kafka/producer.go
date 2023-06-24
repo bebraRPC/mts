@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/Shopify/sarama"
-	"github.com/menyasosali/mts/internal/service/kafka/cfg"
+	"github.com/menyasosali/mts/config"
 	"github.com/menyasosali/mts/pkg/logger"
 )
 
@@ -12,10 +12,10 @@ type ImageProducer struct {
 	Ctx      context.Context
 	Logger   logger.Interface
 	Producer sarama.AsyncProducer
-	Cfg      kafkacfg.ProducerConfig
+	Cfg      config.KafkaConfig
 }
 
-func NewImageProducer(ctx context.Context, logger logger.Interface, cfg kafkacfg.ProducerConfig) (*ImageProducer, error) {
+func NewImageProducer(ctx context.Context, logger logger.Interface, cfg config.KafkaConfig) (*ImageProducer, error) {
 	config := &sarama.Config{}
 	producer, err := sarama.NewAsyncProducer(cfg.Brokers, config)
 	if err != nil {

@@ -6,9 +6,7 @@ import (
 	"github.com/menyasosali/mts/config"
 	"github.com/menyasosali/mts/internal/service/filestorer"
 	"github.com/menyasosali/mts/internal/service/kafka"
-	"github.com/menyasosali/mts/internal/service/kafka/cfg"
 	"github.com/menyasosali/mts/internal/service/minio"
-	"github.com/menyasosali/mts/internal/service/minio/cfg"
 	"github.com/menyasosali/mts/internal/service/resizer"
 	"github.com/menyasosali/mts/pkg/logger"
 	"log"
@@ -25,14 +23,14 @@ func Run(cfg *config.WorkerConfig) {
 	l := logger.NewLogger(cfg.Log.Level)
 
 	// Kafka Consumer
-	kafkaConsumerConfig := kafkacfg.ConsumerConfig{
+	kafkaConsumerConfig := config.KafkaConfig{
 		Brokers: cfg.Kafka.Brokers,
 		Topic:   cfg.Kafka.Topic,
 		GroupID: cfg.Kafka.GroupID,
 	}
 
 	// MinIO
-	minioConfig := miniocfg.Config{
+	minioConfig := config.MinioConfig{
 		Endpoint:   cfg.Minio.Endpoint,
 		AccessKey:  cfg.Minio.AccessKey,
 		SecretKey:  cfg.Minio.SecretKey,

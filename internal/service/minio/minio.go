@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/menyasosali/mts/internal/service/minio/cfg"
+	"github.com/menyasosali/mts/config"
 	"github.com/menyasosali/mts/pkg/logger"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
@@ -30,7 +30,7 @@ type ClientMinio struct {
 	BucketName string
 }
 
-func NewMinioClient(ctx context.Context, logger logger.Interface, cfg miniocfg.Config) (*ClientMinio, error) {
+func NewMinioClient(ctx context.Context, logger logger.Interface, cfg config.MinioConfig) (*ClientMinio, error) {
 	client, err := minio.New(cfg.Endpoint, &minio.Options{
 		Creds:  credentials.NewStaticV4(cfg.AccessKey, cfg.SecretKey, ""),
 		Secure: true,

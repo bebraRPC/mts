@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/Shopify/sarama"
+	"github.com/menyasosali/mts/config"
 	"github.com/menyasosali/mts/internal/domain"
-	"github.com/menyasosali/mts/internal/service/kafka/cfg"
 	"github.com/menyasosali/mts/pkg/logger"
 )
 
@@ -19,10 +19,10 @@ type ImageConsumer struct {
 	Logger    logger.Interface
 	Processor ImageProcessor
 	Consumer  sarama.ConsumerGroup
-	Cfg       kafkacfg.ConsumerConfig
+	Cfg       config.KafkaConfig
 }
 
-func NewImageConsumer(ctx context.Context, logger logger.Interface, processor ImageProcessor, cfg kafkacfg.ConsumerConfig,
+func NewImageConsumer(ctx context.Context, logger logger.Interface, processor ImageProcessor, cfg config.KafkaConfig,
 ) (*ImageConsumer, error) {
 	config := sarama.NewConfig()
 

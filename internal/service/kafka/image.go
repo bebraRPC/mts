@@ -11,7 +11,3 @@ type ImgKafka struct {
 //func (i *ImgKafka) FromKafka()
 
 //func (i *ImgKafka) ToKafka()
-
-func FromKafka() {
-
-}
