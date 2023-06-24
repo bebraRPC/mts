@@ -7,9 +7,7 @@ import (
 	"github.com/menyasosali/mts/internal/service/db"
 	"github.com/menyasosali/mts/internal/service/filestorer"
 	"github.com/menyasosali/mts/internal/service/kafka"
-	"github.com/menyasosali/mts/internal/service/kafka/cfg"
 	"github.com/menyasosali/mts/internal/service/minio"
-	"github.com/menyasosali/mts/internal/service/minio/cfg"
 	"github.com/menyasosali/mts/internal/transport"
 	"github.com/menyasosali/mts/pkg/httpserver"
 	"github.com/menyasosali/mts/pkg/logger"
@@ -34,7 +32,7 @@ func Run(cfg *config.GateConfig) {
 	defer pg.Close()
 
 	// MinIO
-	minioConfig := miniocfg.Config{
+	minioConfig := config.MinioConfig{
 		Endpoint:   cfg.Minio.Endpoint,
 		AccessKey:  cfg.Minio.AccessKey,
 		SecretKey:  cfg.Minio.SecretKey,
@@ -46,7 +44,7 @@ func Run(cfg *config.GateConfig) {
 	}
 
 	// Kafka Producer
-	kafkaProducerConfig := kafkacfg.ProducerConfig{
+	kafkaProducerConfig := config.KafkaConfig{
 		Brokers: cfg.Kafka.Brokers,
 		Topic:   cfg.Kafka.Topic,
 	}
