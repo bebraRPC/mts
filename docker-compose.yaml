@@ -1,56 +1,99 @@
 version: "3"
-services:
-  minio:
-    image: minio/minio
-    ports:
-      - "9000:9000"
-    environment:
-      - MINIO_ACCESS_KEY=accesskey
-      - MINIO_SECRET_KEY=secretkey
-    volumes:
-      - minio_data:/data
-    command: server /data
 
-  kafka:
-    image: confluentinc/cp-kafka
-    ports:
-      - "9092:9092"
-    environment:
-      - KAFKA_ZOOKEEPER_CONNECT=zookeeper:2181
-      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
+#networks:
+#  my_network:
+#    driver: bridge
+
+services:
+#  minio:
+#    image: minio/minio
+#    ports:
+#      - "9000:9000"
+#    environment:
+#      - MINIO_ACCESS_KEY=accesskey
+#      - MINIO_SECRET_KEY=secretkey
+#    volumes:
+#      - minio_data:/data
+#    command: server /data
+#
+#  zookeeper:
+#    image: confluentinc/cp-zookeeper:latest
+#    environment:
+#      ZOOKEEPER_CLIENT_PORT: 2181
+#      ZOOKEEPER_TICK_TIME: 2000
+#    ports:
+#      - "22181:2181"
+#
+#  kafka:
+#    image: confluentinc/cp-kafka
+#    ports:
+#      - "9092:9092"
+#    environment:
+#      - KAFKA_ZOOKEEPER_CONNECT=zookeeper:2181
+#      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
+#    depends_on:
+#      - zookeeper
 
   postgres:
+    container_name: postgres
     image: postgres
-    environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=images
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - pg-data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: 'user'
+      POSTGRES_PASSWORD: 'password'
+      POSTGRES_DB: 'postgres'
+    ports:
+      - 5432:5432
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U user -d postgres" ]
+      interval: 1s
+      timeout: 1s
+      retries: 5
+    networks:
+      - mynetwork
 
   gate:
     build:
       context: .
       dockerfile: ./internal/gate/Dockerfile
+    container_name: gate
+    image: gate
+    environment:
+      PG_URL: 'postgres://user:password@postgres:5432/postgres'
+    ports:
+      - 8080:8080
     volumes:
       - ./config:/config
+    networks:
+      - mynetwork
     depends_on:
-      - minio
-      - kafka
-      - postgres
+      postgres:
+        condition: service_healthy
+#      - minio
+#      - kafka
+#      - zookeeper
 
-  worker:
-    build:
-      context: .
-      dockerfile: ./internal/worker/Dockerfile
-    volumes:
-      - ./config:/config
-    depends_on:
-      - kafka
-      - postgres
+#  worker:
+#    build:
+#      context: .
+#      dockerfile: ./internal/worker/Dockerfile
+#    volumes:
+#      - ./config:/config
+#    depends_on:
+#      - minio
+#      - zookeeper
+#      - kafka
+#      - postgres
+#      - gate
 
 volumes:
+  pg-data:
   gate:
   worker:
   minio_data:
   postgres_data:
+  zookeeper:
+
+networks:
+  mynetwork:

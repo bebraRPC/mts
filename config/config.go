@@ -16,7 +16,7 @@ type WorkerConfig struct {
 
 type PostgresConfig struct {
 	PoolMax int    `env-required:"true" yaml:"pool_max" env:"PG_POOL_MAX" env-default:"2"`
-	URL     string `env-required:"true" yaml:"url" env:"PG_URL" env-default:"postgres://user:pass@localhost:5432/postgres"`
+	URL     string `env-required:"true" env:"PG_URL" env-default:"postgres://user:password@localhost:5432/postgres"`
 }
 
 type MinioConfig struct {
