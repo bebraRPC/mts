@@ -16,7 +16,7 @@ type ImageProducer struct {
 }
 
 func NewImageProducer(ctx context.Context, logger logger.Interface, cfg config.KafkaConfig) (*ImageProducer, error) {
-	config := &sarama.Config{}
+	config := sarama.NewConfig()
 	producer, err := sarama.NewAsyncProducer(cfg.Brokers, config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Kafka producer: %w", err)
