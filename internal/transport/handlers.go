@@ -3,6 +3,7 @@ package transport
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/menyasosali/mts/internal/service/db"
 	"github.com/menyasosali/mts/internal/service/kafka"
@@ -54,13 +55,41 @@ func NewTransport(ctx context.Context, logger logger.Interface, fileStorer files
 
 func (t *Transport) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	router := chi.NewRouter()
+	router.Get("/images/upload", t.ShowUploadPageHandler)
 	router.Post("/images/upload", t.UploadImageHandler)
 	router.Get("/images/get/{id}", t.GetImageByIDHandler)
 
 	router.ServeHTTP(w, r)
 }
 
+func (t *Transport) ShowUploadPageHandler(w http.ResponseWriter, r *http.Request) {
+	html := `
+		<!DOCTYPE html>
+		<html>
+		<head>
+			<title>Upload Image</title>
+		</head>
+		<body>
+			<h1>Upload Image</h1>
+			<form action="/images/upload" method="POST" enctype="multipart/form-data">
+				<input type="file" name="image" accept="image/*">
+				<input type="submit" value="Upload">
+			</form>
+		</body>
+		</html>
+	`
+	w.Header().Set("Content-Type", "text/html")
+	fmt.Fprint(w, html)
+}
+
 func (t *Transport) UploadImageHandler(w http.ResponseWriter, r *http.Request) {
+	err := r.ParseMultipartForm(10 << 20) // 10MB
+	if err != nil {
+		t.Logger.Error("Failed to parse multipart form", err)
+		http.Error(w, "Failed to parse multipart form", http.StatusBadRequest)
+		return
+	}
+
 	file, header, err := r.FormFile("image")
 	if err != nil {
 		t.Logger.Error("Failed to read uploaded file", err)
