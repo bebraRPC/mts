@@ -51,8 +51,23 @@ func NewMinioClient(ctx context.Context, logger logger.Interface, cfg config.Min
 
 func (c *ClientMinio) UploadFile(file []byte, filename string) (string, error) {
 	contentType := mime.TypeByExtension(filepath.Ext(filename))
+	c.Logger.Info(fmt.Sprintf("Minio settings: %s, Filename: %s", c.BucketName, filename))
+	location := "serv"
 
-	_, err := c.Client.PutObject(c.Ctx, c.BucketName, filename, bytes.NewReader(file), -1, minio.PutObjectOptions{
+	err := c.Client.MakeBucket(c.Ctx, c.BucketName, minio.MakeBucketOptions{Region: location})
+	if err != nil {
+		// Check to see if we already own this bucket (which happens if you run this twice)
+		exists, errBucketExists := c.Client.BucketExists(c.Ctx, c.BucketName)
+		if errBucketExists == nil && exists {
+			c.Logger.Info(fmt.Sprintf("We already own %s\n", c.BucketName))
+		} else {
+			c.Logger.Error(err)
+		}
+	} else {
+		c.Logger.Info(fmt.Sprintf("Successfully created %s\n", c.BucketName))
+	}
+
+	_, err = c.Client.PutObject(c.Ctx, c.BucketName, filename, bytes.NewReader(file), -1, minio.PutObjectOptions{
 		ContentType: contentType,
 	})
 	if err != nil {
