@@ -46,7 +46,7 @@ func New(url string, opts ...Option) (*Postgres, error) {
 
 	for postgres.connAttempts > 0 {
 		postgres.Pool, err = pgxpool.ConnectConfig(context.Background(), poolConfig)
-		if err != nil {
+		if err == nil {
 			break
 		}
 
