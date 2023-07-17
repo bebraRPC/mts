@@ -33,8 +33,9 @@ type ClientMinio struct {
 func NewMinioClient(ctx context.Context, logger logger.Interface, cfg config.MinioConfig) (*ClientMinio, error) {
 	client, err := minio.New(cfg.Endpoint, &minio.Options{
 		Creds:  credentials.NewStaticV4(cfg.AccessKey, cfg.SecretKey, ""),
-		Secure: true,
+		Secure: false,
 	})
+	logger.Info(fmt.Sprintf("AccessKey: %s\n SecretKey: %s\n", cfg.AccessKey, cfg.SecretKey))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create MinIO client: %w", err)
 	}
@@ -51,7 +52,6 @@ func NewMinioClient(ctx context.Context, logger logger.Interface, cfg config.Min
 
 func (c *ClientMinio) UploadFile(file []byte, filename string) (string, error) {
 	contentType := mime.TypeByExtension(filepath.Ext(filename))
-	c.Logger.Info(fmt.Sprintf("Minio settings: %s, Filename: %s", c.BucketName, filename))
 	location := "serv"
 
 	err := c.Client.MakeBucket(c.Ctx, c.BucketName, minio.MakeBucketOptions{Region: location})
