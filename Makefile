@@ -9,3 +9,7 @@ up:
 
 down:
 	docker-compose down
+
+rm:
+	docker image rm mts-gate
+	docker image rm mts-worker
