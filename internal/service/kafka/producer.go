@@ -17,10 +17,14 @@ type ImageProducer struct {
 
 func NewImageProducer(ctx context.Context, logger logger.Interface, cfg config.KafkaConfig) (*ImageProducer, error) {
 	config := sarama.NewConfig()
+	config.Producer.Return.Successes = true
+	logger.Info(fmt.Sprintf("Kafka producer SARAMA config - producer.go - 20: %s", config))
+
 	producer, err := sarama.NewAsyncProducer(cfg.Brokers, config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Kafka producer: %w", err)
 	}
+	logger.Info(fmt.Sprintf("Kafka producer moi config - producer.go - 25: %s", cfg))
 
 	imageProducer := &ImageProducer{
 		Ctx:      ctx,
@@ -28,9 +32,6 @@ func NewImageProducer(ctx context.Context, logger logger.Interface, cfg config.K
 		Producer: producer,
 		Cfg:      cfg,
 	}
-
-	go imageProducer.handleSuccess()
-	go imageProducer.handleErrors()
 
 	return imageProducer, nil
 }
@@ -43,6 +44,7 @@ func (p *ImageProducer) ProduceMessage(message []byte) error {
 
 	select {
 	case p.Producer.Input() <- messageInput:
+		p.Logger.Info(fmt.Sprintf("Successful send message from producer"))
 		return nil
 	case err := <-p.Producer.Errors():
 		p.Logger.Error(fmt.Sprintf("Failed to produce Kafka message: %v", err))
@@ -54,16 +56,4 @@ func (p *ImageProducer) ProduceMessage(message []byte) error {
 
 func (p *ImageProducer) Close() error {
 	return p.Producer.Close()
-}
-
-func (p *ImageProducer) handleSuccess() {
-	for range p.Producer.Successes() {
-		p.Logger.Info("Message sent successfully")
-	}
-}
-
-func (p *ImageProducer) handleErrors() {
-	for err := range p.Producer.Errors() {
-		p.Logger.Error(fmt.Sprintf("Failed to produce Kafka message: %v", err))
-	}
 }
