@@ -1,5 +1,4 @@
-CREATE TABLE images
-(
+CREATE TABLE IF NOT EXISTS images(
     image_id     VARCHAR(36) PRIMARY KEY,
     name         VARCHAR(255) NOT NULL,
     original_url VARCHAR(255) NOT NULL,
