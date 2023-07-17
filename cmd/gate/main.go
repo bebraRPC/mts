@@ -22,7 +22,7 @@ func main() {
 		log.Fatalf("Failed to read config file: %v", err)
 	}
 
-	fmt.Println("Config:")
+	fmt.Println("Gate Config:")
 	fmt.Printf("%+v\n", cfg)
 
 	watcher, err := fsnotify.NewWatcher()
