@@ -89,7 +89,7 @@ func (t *Transport) UploadImageHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to parse multipart form", http.StatusBadRequest)
 		return
 	}
-
+	t.Logger.Info("92.. - producer.go - Parse - success")
 	file, header, err := r.FormFile("image")
 	if err != nil {
 		t.Logger.Error("Failed to read uploaded file", err)
@@ -114,6 +114,8 @@ func (t *Transport) UploadImageHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	t.Logger.Info("117.. - producer.go - FileStorer Upload - success")
+
 	imgID, err := t.Store.UploadImage(filename, imgURL)
 	if err != nil {
 		t.Logger.Error("Failed to save image to db", err)
@@ -132,6 +134,7 @@ func (t *Transport) UploadImageHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to marshal response to JSON", http.StatusInternalServerError)
 		return
 	}
+	t.Logger.Info(fmt.Sprintf("138.. - producer.go - message: %s", message))
 
 	// в producer кидаю response в topic
 	err = t.Producer.ProduceMessage(message)
