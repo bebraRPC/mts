@@ -43,9 +43,10 @@ func Run(cfg *config.WorkerConfig) {
 
 	// File Storer
 	fileStorer := filestorer.NewFileStorer(ctx, l, minioClient)
-
+	l.Info(fmt.Sprintf("46 - fileStorer - worker.go - Run: %s", fileStorer))
 	// Image Resizer
 	processor := resizer.NewResizer(ctx, l, minioClient, fileStorer)
+	l.Info(fmt.Sprintf("49 - processor - worker.go - Run: %s", fileStorer))
 
 	// Kafka consumer
 	kafkaConsumer, err := kafka.NewImageConsumer(ctx, l, processor, kafkaConsumerConfig)
@@ -54,6 +55,7 @@ func Run(cfg *config.WorkerConfig) {
 	}
 	defer kafkaConsumer.Close()
 
+	l.Info(fmt.Sprintf("58 - kafkaConsumer Start - worker.go - Run"))
 	kafkaConsumer.Start()
 
 	// Graceful shutdown
