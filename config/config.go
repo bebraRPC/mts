@@ -21,8 +21,8 @@ type PostgresConfig struct {
 
 type MinioConfig struct {
 	Endpoint   string `yaml:"endpoint" env:"" env-default:"minio:9000"`
-	AccessKey  string `yaml:"accesskey" env:"" env-default:"accesskey"`
-	SecretKey  string `yaml:"secretkey" env:"" env-default:"secretkey"`
+	AccessKey  string `yaml:"access_key" env:"" env-default:"CMaDuyCwWXONunRCMOvp"`
+	SecretKey  string `yaml:"secret_key" env:"" env-default:"fEFiS08TGU5kkGS1arwySslVXBbOTgrzAQChISxS"`
 	BucketName string `yaml:"bucket_name" env:"" env-default:"mts"`
 }
 
@@ -32,7 +32,7 @@ type LogConfig struct {
 
 type KafkaConfig struct {
 	Brokers []string `env-required:"true" yaml:"brokers" env:"KAFKA_BROKERS" env-default:"kafka:9092"`
-	Topic   string   `env-required:"true" yaml:"topic" env:"KAFKA_TOPIC" env-default:"image-topic"`
+	Topic   string   `env-required:"true" yaml:"topic" env:"KAFKA_TOPIC" env-default:"config-topic"`
 	GroupID string   `env-required:"true" yaml:"group_id" env:"KAFKA_GROUP_ID" env-default:"worker-group"`
 }
 
