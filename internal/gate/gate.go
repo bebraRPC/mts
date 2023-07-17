@@ -44,11 +44,11 @@ func Run(cfg *config.GateConfig) {
 	}
 
 	// Kafka Producer
-	kafkaProducerConfig := config.KafkaConfig{
+	kafkaProducerConfig := &config.KafkaConfig{
 		Brokers: cfg.Kafka.Brokers,
 		Topic:   cfg.Kafka.Topic,
 	}
-	kafkaProducer, err := kafka.NewImageProducer(ctx, l, kafkaProducerConfig)
+	kafkaProducer, err := kafka.NewImageProducer(ctx, l, *kafkaProducerConfig)
 	if err != nil {
 		log.Fatal("Failed to create Kafka producer:", err)
 	}
