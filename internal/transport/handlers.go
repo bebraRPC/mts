@@ -151,7 +151,7 @@ func (t *Transport) UploadImageHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (t *Transport) GetImageByIDHandler(w http.ResponseWriter, r *http.Request) {
-	imageID := r.URL.Query().Get("id")
+	imageID := chi.URLParam(r, "id")
 	if imageID == "" {
 		http.Error(w, "Image ID is required", http.StatusBadRequest)
 		return
