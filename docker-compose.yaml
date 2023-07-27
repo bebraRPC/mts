@@ -9,8 +9,8 @@ services:
       - "9000:9000"
       - "9001:9001"
     environment:
-      - MINIO_ROOT_USER=user
-      - MINIO_ROOT_PASSWORD=password
+      - MINIO_ROOT_USER=${MINIO_USER:-admin}
+      - MINIO_ROOT_PASSWORD=${MINIO_PASSWORD:-password}
     volumes:
       - minio_storage:/data
     networks:
@@ -75,8 +75,8 @@ services:
       dockerfile: ./internal/gate/Dockerfile
     container_name: gate
     environment:
-      PG_URL: 'postgres://user:password@postgres:5432/postgres'
-      KAFKA_BROKER: 'kafka:9092'
+      - PG_URL=${POSTGRES_URL:-postgres://user:password@postgres:5432/postgres}
+      - KAFKA_BROKER=${KAFKA_BROKER:-kafka:9092}
     ports:
       - 8080:8080
     volumes:
