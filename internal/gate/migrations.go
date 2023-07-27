@@ -1,7 +1,9 @@
 package gate
 
 import (
+	"database/sql"
 	"github.com/golang-migrate/migrate/v4"
+	"github.com/golang-migrate/migrate/v4/database/postgres"
 	"github.com/pkg/errors"
 	"log"
 	"os"
@@ -26,14 +28,22 @@ func init() {
 
 	databaseURL += "?sslmode=disable"
 
+	db, err := sql.Open("postgres", databaseURL)
+	if err != nil {
+		log.Fatalf("migrate: sql.Open: %s", err)
+	}
+
+	driver, err := postgres.WithInstance(db, &postgres.Config{})
+	if err != nil {
+		log.Fatalf("migrate: postgres.WithInstance: %s", err)
+	}
 	var (
 		attempts = _defaultAttempts
-		err      error
 		m        *migrate.Migrate
 	)
 
 	for attempts > 0 {
-		m, err = migrate.New("file://migrations", databaseURL)
+		m, err = migrate.NewWithDatabaseInstance("file:///migrations", "postgres", driver)
 		if err == nil {
 			break
 		}
