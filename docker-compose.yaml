@@ -77,6 +77,8 @@ services:
     environment:
       - PG_URL=${POSTGRES_URL:-postgres://user:password@postgres:5432/postgres}
       - KAFKA_BROKER=${KAFKA_BROKER:-kafka:9092}
+      - MINIO_USER=${MINIO_USER:-admin}
+      - MINIO_PASSWORD=${MINIO_PASSWORD:-password}
     ports:
       - 8080:8080
     volumes:
@@ -98,6 +100,11 @@ services:
     container_name: worker
     volumes:
       - ./config:/config
+    environment:
+      - PG_URL=${POSTGRES_URL:-postgres://user:password@postgres:5432/postgres}
+      - KAFKA_BROKER=${KAFKA_BROKER:-kafka:9092}
+      - MINIO_USER=${MINIO_USER:-admin}
+      - MINIO_PASSWORD=${MINIO_PASSWORD:-password}
     networks:
       - mynetwork
     depends_on:

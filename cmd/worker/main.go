@@ -15,7 +15,7 @@ import (
 func main() {
 	cfg := &config.WorkerConfig{}
 
-	cfgPath := "./config/config.yml"
+	cfgPath := "./config/config.yaml"
 
 	err := cleanenv.ReadConfig(cfgPath, cfg)
 	if err != nil {

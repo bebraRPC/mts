@@ -15,11 +15,12 @@ import (
 func main() {
 	cfg := &config.GateConfig{}
 
-	cfgPath := "./config/config.yml"
+	cfgPath := "./config/config.yaml"
 
 	err := cleanenv.ReadConfig(cfgPath, cfg)
 	if err != nil {
 		log.Fatalf("Failed to read config file: %v", err)
+
 	}
 
 	fmt.Println("Gate Config:")

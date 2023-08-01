@@ -20,10 +20,10 @@ type PostgresConfig struct {
 }
 
 type MinioConfig struct {
-	Endpoint   string `yaml:"endpoint" env:"" env-default:"minio:9000"`
-	AccessKey  string `yaml:"access_key" env:"" env-default:"CMaDuyCwWXONunRCMOvp"`
-	SecretKey  string `yaml:"secret_key" env:"" env-default:"fEFiS08TGU5kkGS1arwySslVXBbOTgrzAQChISxS"`
-	BucketName string `yaml:"bucket_name" env:"" env-default:"mts"`
+	Endpoint   string `yaml:"endpoint" env-default:"minio:9000"`
+	AccessKey  string `yaml:"access_key" env:"MINIO_USER" env-default:"config-user"`
+	SecretKey  string `yaml:"secret_key" env:"MINIO_PASSWORD" env-default:"config-password"`
+	BucketName string `yaml:"bucket_name" env-default:"mts"`
 }
 
 type LogConfig struct {
