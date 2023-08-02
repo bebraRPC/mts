@@ -1,13 +1,7 @@
 package kafka
 
 type ImgKafka struct {
-	ID          string `json:"id"`
+	ID          string `json:"imageID"`
 	Name        string `json:"name"`
-	OriginalURL string `json:"originalURL"`
+	OriginalURL string `json:"originalUrl"`
 }
-
-// для consumer, для чтения, поиска в бд, заполнения 512/256/16 и originalURL для загрузки из minio
-
-//func (i *ImgKafka) FromKafka()
-
-//func (i *ImgKafka) ToKafka()
