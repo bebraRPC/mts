@@ -14,26 +14,24 @@ import (
 //
 
 type FileStorerInterface interface {
-	UploadImage([]byte, string) (string, error)
-	DownloadImage(string) ([]byte, error)
+	UploadImage(context.Context, []byte, string) (string, error)
+	DownloadImage(context.Context, string) ([]byte, error)
 }
 
 type FileStorer struct {
-	Ctx         context.Context
 	Logger      logger.Interface
 	ClientMinio *minio.ClientMinio
 }
 
-func NewFileStorer(ctx context.Context, logger logger.Interface, minioClient *minio.ClientMinio) *FileStorer {
+func NewFileStorer(logger logger.Interface, minioClient *minio.ClientMinio) *FileStorer {
 	return &FileStorer{
-		Ctx:         ctx,
 		Logger:      logger,
 		ClientMinio: minioClient,
 	}
 }
 
-func (u *FileStorer) UploadImage(imageBytes []byte, filename string) (string, error) {
-	fileURL, err := u.ClientMinio.UploadFile(imageBytes, filename)
+func (u *FileStorer) UploadImage(ctx context.Context, imageBytes []byte, filename string) (string, error) {
+	fileURL, err := u.ClientMinio.UploadFile(ctx, imageBytes, filename)
 
 	if err != nil {
 		u.Logger.Error(fmt.Sprintf("Failed to upload image to MinIO: %v", err))
@@ -43,8 +41,8 @@ func (u *FileStorer) UploadImage(imageBytes []byte, filename string) (string, er
 	return fileURL, nil
 }
 
-func (u *FileStorer) DownloadImage(imageID string) ([]byte, error) {
-	originalImageBytes, err := u.ClientMinio.DownloadFile(imageID)
+func (u *FileStorer) DownloadImage(ctx context.Context, imageID string) ([]byte, error) {
+	originalImageBytes, err := u.ClientMinio.DownloadFile(ctx, imageID)
 	if err != nil {
 		errMsg := fmt.Errorf("failed to download original image: %v", err)
 		u.Logger.Error(errMsg)

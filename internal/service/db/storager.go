@@ -11,26 +11,24 @@ import (
 )
 
 type StoreInterface interface {
-	UploadImage(string, string) (string, error)
-	GetImageByID(string) (*domain.ImgDescriptor, error)
-	UpdateImage(descriptor domain.ImgDescriptor) error
+	UploadImage(context.Context, string, string) (string, error)
+	GetImageByID(context.Context, string) (*domain.ImgDescriptor, error)
+	UpdateImage(context.Context, domain.ImgDescriptor) error
 }
 
 type Store struct {
-	Ctx    context.Context
 	Logger logger.Interface
 	Pg     *postgres.Postgres
 }
 
-func NewStore(ctx context.Context, logger logger.Interface, pg *postgres.Postgres) *Store {
+func NewStore(logger logger.Interface, pg *postgres.Postgres) *Store {
 	return &Store{
-		Ctx:    ctx,
 		Logger: logger,
 		Pg:     pg,
 	}
 }
 
-func (s *Store) UploadImage(name, originalURL string) (string, error) {
+func (s *Store) UploadImage(ctx context.Context, name, originalURL string) (string, error) {
 	image := domain.ImgDescriptor{
 		Name: name,
 		URL:  originalURL,
@@ -44,7 +42,7 @@ func (s *Store) UploadImage(name, originalURL string) (string, error) {
 	`
 
 	image.ID = uuid.New().String()
-	err := s.Pg.Pool.QueryRow(s.Ctx, query, image.ID, image.Name, image.URL, image.URL512, image.URL256, image.URL16).Scan(&image.ID)
+	err := s.Pg.Pool.QueryRow(ctx, query, image.ID, image.Name, image.URL, image.URL512, image.URL256, image.URL16).Scan(&image.ID)
 	if err != nil {
 		s.Logger.Error(fmt.Sprintf("Failed to save image in database: %v", err))
 		return "", fmt.Errorf("failed to save image in database: %w", err)
@@ -53,17 +51,15 @@ func (s *Store) UploadImage(name, originalURL string) (string, error) {
 	return image.ID, nil
 }
 
-func (s *Store) GetImageByID(imageID string) (*domain.ImgDescriptor, error) {
+func (s *Store) GetImageByID(ctx context.Context, imageID string) (*domain.ImgDescriptor, error) {
 	query := `
 		SELECT image_id, name, original_url, url_512, url_256, url_16
 		FROM images
 		WHERE image_id = $1
 	`
 
-	row := s.Pg.Pool.QueryRow(s.Ctx, query, imageID)
-
 	image := &domain.ImgDescriptor{}
-	err := row.Scan(&image.ID, &image.Name, &image.URL, &image.URL512, &image.URL256, &image.URL16)
+	err := s.Pg.Pool.QueryRow(ctx, query, imageID).Scan(&image.ID, &image.Name, &image.URL, &image.URL512, &image.URL256, &image.URL16)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			s.Logger.Error(fmt.Sprintf("Image not found in database: %v", err))
@@ -76,14 +72,14 @@ func (s *Store) GetImageByID(imageID string) (*domain.ImgDescriptor, error) {
 	return image, nil
 }
 
-func (s *Store) UpdateImage(img domain.ImgDescriptor) error {
+func (s *Store) UpdateImage(ctx context.Context, img domain.ImgDescriptor) error {
 	query := `
 		UPDATE images
 		SET url_512 = $2, url_256 = $3, url_16 = $4
 		WHERE image_id = $1
 	`
 
-	_, err := s.Pg.Pool.Exec(s.Ctx, query, img.ID, img.URL512, img.URL256, img.URL16)
+	_, err := s.Pg.Pool.Exec(ctx, query, img.ID, img.URL512, img.URL256, img.URL16)
 	if err != nil {
 		s.Logger.Error(fmt.Sprintf("Failed to update image in database: %v", err))
 		return fmt.Errorf("failed to update image in database: %w", err)

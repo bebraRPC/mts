@@ -36,27 +36,27 @@ func Run(cfg *config.WorkerConfig) {
 		SecretKey:  cfg.Minio.SecretKey,
 		BucketName: cfg.Minio.BucketName,
 	}
-	minioClient, err := minio.NewMinioClient(ctx, l, minioConfig)
+	minioClient, err := minio.NewMinioClient(l, minioConfig)
 	if err != nil {
 		l.Error(fmt.Errorf("failed to create MinIO client: %w", err))
 	}
 
 	// File Storer
-	fileStorer := filestorer.NewFileStorer(ctx, l, minioClient)
+	fileStorer := filestorer.NewFileStorer(l, minioClient)
 	l.Info(fmt.Sprintf("46 - fileStorer - worker.go - Run: %s", fileStorer))
 	// Image Resizer
-	processor := resizer.NewResizer(ctx, l, minioClient, fileStorer)
+	processor := resizer.NewResizer(l, fileStorer)
 	l.Info(fmt.Sprintf("49 - processor - worker.go - Run: %s", fileStorer))
 
 	// Kafka consumer
-	kafkaConsumer, err := kafka.NewImageConsumer(ctx, l, processor, kafkaConsumerConfig)
+	kafkaConsumer, err := kafka.NewImageConsumer(l, processor, kafkaConsumerConfig)
 	if err != nil {
 		log.Fatal("Failed to create Kafka consumer:", err)
 	}
 	defer kafkaConsumer.Close()
 
 	l.Info(fmt.Sprintf("58 - kafkaConsumer Start - worker.go - Run"))
-	kafkaConsumer.Start()
+	kafkaConsumer.Start(ctx)
 
 	// Graceful shutdown
 	stop := make(chan os.Signal, 1)

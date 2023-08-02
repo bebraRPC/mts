@@ -1,7 +1,6 @@
 package transport
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/go-chi/chi/v5"
@@ -21,7 +20,6 @@ import (
 // http получают картинку закидывают в upload, в бд, минио
 
 type Transport struct {
-	Ctx        context.Context
 	Logger     logger.Interface
 	FileStorer filestorer.FileStorerInterface
 	Store      db.StoreInterface
@@ -30,6 +28,7 @@ type Transport struct {
 
 type ImageResponse struct {
 	ImageID     string `json:"imageID"`
+	Name        string `json:"name"`
 	OriginalURL string `json:"originalUrl"`
 }
 
@@ -41,11 +40,10 @@ type ImageDescriptorResponse struct {
 	Img16       string `json:"img16"`
 }
 
-func NewTransport(ctx context.Context, logger logger.Interface, fileStorer filestorer.FileStorerInterface, store db.StoreInterface,
+func NewTransport(logger logger.Interface, fileStorer filestorer.FileStorerInterface, store db.StoreInterface,
 	producer *kafka.ImageProducer) *Transport {
 
 	return &Transport{
-		Ctx:        ctx,
 		Logger:     logger,
 		FileStorer: fileStorer,
 		Store:      store,
@@ -107,7 +105,7 @@ func (t *Transport) UploadImageHandler(w http.ResponseWriter, r *http.Request) {
 
 	filename := header.Filename
 
-	imgURL, err := t.FileStorer.UploadImage(imageBytes, filename)
+	imgURL, err := t.FileStorer.UploadImage(r.Context(), imageBytes, filename)
 	if err != nil {
 		t.Logger.Error("Failed to upload image", err)
 		http.Error(w, "Failed to upload image", http.StatusInternalServerError)
@@ -116,7 +114,7 @@ func (t *Transport) UploadImageHandler(w http.ResponseWriter, r *http.Request) {
 
 	t.Logger.Info("117.. - producer.go - FileStorer Upload - success")
 
-	imgID, err := t.Store.UploadImage(filename, imgURL)
+	imgID, err := t.Store.UploadImage(r.Context(), filename, imgURL)
 	if err != nil {
 		t.Logger.Error("Failed to save image to db", err)
 		http.Error(w, "Failed to save image to db", http.StatusInternalServerError)
@@ -125,6 +123,7 @@ func (t *Transport) UploadImageHandler(w http.ResponseWriter, r *http.Request) {
 
 	response := ImageResponse{
 		ImageID:     imgID,
+		Name:        filename,
 		OriginalURL: imgURL,
 	}
 
@@ -137,7 +136,7 @@ func (t *Transport) UploadImageHandler(w http.ResponseWriter, r *http.Request) {
 	t.Logger.Info(fmt.Sprintf("138.. - producer.go - message: %s", message))
 
 	// в producer кидаю response в topic
-	err = t.Producer.ProduceMessage(message)
+	err = t.Producer.ProduceMessage(r.Context(), message)
 	if err != nil {
 		t.Logger.Error("Failed to produce message to Kafka topic", err)
 		http.Error(w, "Failed to produce message to Kafka topic", http.StatusInternalServerError)
@@ -157,7 +156,7 @@ func (t *Transport) GetImageByIDHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	img, err := t.Store.GetImageByID(imageID)
+	img, err := t.Store.GetImageByID(r.Context(), imageID)
 	if err != nil {
 		t.Logger.Error("Failed to get image from db", err)
 		http.Error(w, "Failed to get image from db", http.StatusInternalServerError)

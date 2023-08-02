@@ -38,7 +38,7 @@ func Run(cfg *config.GateConfig) {
 		SecretKey:  cfg.Minio.SecretKey,
 		BucketName: cfg.Minio.BucketName,
 	}
-	minioClient, err := minio.NewMinioClient(ctx, l, minioConfig)
+	minioClient, err := minio.NewMinioClient(l, minioConfig)
 	if err != nil {
 		log.Fatal("Failed to create MinIO client:", err)
 	}
@@ -48,20 +48,20 @@ func Run(cfg *config.GateConfig) {
 		Brokers: cfg.Kafka.Brokers,
 		Topic:   cfg.Kafka.Topic,
 	}
-	kafkaProducer, err := kafka.NewImageProducer(ctx, l, *kafkaProducerConfig)
+	kafkaProducer, err := kafka.NewImageProducer(l, *kafkaProducerConfig)
 	if err != nil {
 		log.Fatal("Failed to create Kafka producer:", err)
 	}
 	defer kafkaProducer.Close()
 
 	// Uploader
-	fileStorer := filestorer.NewFileStorer(ctx, l, minioClient)
+	fileStorer := filestorer.NewFileStorer(l, minioClient)
 
 	// DB Store
-	store := db.NewStore(ctx, l, pg)
+	store := db.NewStore(l, pg)
 
 	// Transport
-	newTransport := transport.NewTransport(ctx, l, fileStorer, store, kafkaProducer)
+	newTransport := transport.NewTransport(l, fileStorer, store, kafkaProducer)
 
 	// HTTP Server
 	httpServer := httpserver.NewServer(ctx, l, newTransport, httpserver.Port(cfg.HTTP.Port))
