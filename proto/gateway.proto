@@ -1,0 +1,32 @@
+syntax = "proto3";
+package pb;
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+import "google/api/httpbody.proto";
+option go_package = "./pkg/gen;pb";
+
+service Gateway {
+  rpc GetUploadPage(google.protobuf.Empty) returns (google.api.HttpBody) {
+    option (google.api.http) = {
+      get: "/images/upload"
+    };
+  }
+  rpc GetImageByID(GetImageByIDRequest) returns (GetImageByIDResponse) {
+    option (google.api.http) = {
+      get: "/images/get/{id}"
+    };
+  }
+}
+
+message GetImageByIDRequest {
+  string id = 1;
+}
+
+message GetImageByIDResponse {
+  string ImageID = 1;
+  string OriginalURL = 2;
+  string Img512 = 3;
+  string Img256 = 4;
+  string Img16 = 5;
+}
+
