@@ -4,12 +4,12 @@ import (
 	"context"
 	"fmt"
 	"github.com/menyasosali/mts/config"
+	"github.com/menyasosali/mts/internal/server"
+	"github.com/menyasosali/mts/internal/server/gateway"
 	"github.com/menyasosali/mts/internal/service/db"
 	"github.com/menyasosali/mts/internal/service/filestorer"
 	"github.com/menyasosali/mts/internal/service/kafka"
 	"github.com/menyasosali/mts/internal/service/minio"
-	"github.com/menyasosali/mts/internal/transport"
-	"github.com/menyasosali/mts/pkg/httpserver"
 	"github.com/menyasosali/mts/pkg/logger"
 	"github.com/menyasosali/mts/pkg/postgres"
 	"log"
@@ -20,7 +20,6 @@ import (
 
 func Run(cfg *config.GateConfig) {
 	ctx := context.Background()
-
 	// Logger
 	l := logger.NewLogger(cfg.Log.Level)
 
@@ -61,10 +60,10 @@ func Run(cfg *config.GateConfig) {
 	store := db.NewStore(l, pg)
 
 	// Transport
-	newTransport := transport.NewTransport(l, fileStorer, store, kafkaProducer)
-
+	//newTransport := transport.NewTransport(l, fileStorer, store, kafkaProducer)
+	gatewayService := gateway.NewService(l, fileStorer, store, kafkaProducer)
 	// HTTP Server
-	httpServer := httpserver.NewServer(ctx, l, newTransport, httpserver.Port(cfg.HTTP.Port))
+	httpServer := server.NewServer(ctx, l, gatewayService, server.Port(cfg.HTTP.Port))
 
 	// Waiting signal
 	stop := make(chan os.Signal, 1)
