@@ -13,17 +13,11 @@ import (
 	"github.com/menyasosali/mts/pkg/logger"
 )
 
-//хендлеры для сервака
-
-// service filestorer
-
-// http получают картинку закидывают в upload, в бд, минио
-
 type Transport struct {
 	Logger     logger.Interface
 	FileStorer filestorer.FileStorerInterface
 	Store      db.StoreInterface
-	Producer   *kafka.ImageProducer //Producer
+	Producer   *kafka.ImageProducer
 }
 
 type ImageResponse struct {
@@ -135,15 +129,12 @@ func (t *Transport) UploadImageHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	t.Logger.Info(fmt.Sprintf("138.. - producer.go - message: %s", message))
 
-	// в producer кидаю response в topic
 	err = t.Producer.ProduceMessage(r.Context(), message)
 	if err != nil {
 		t.Logger.Error("Failed to produce message to Kafka topic", err)
 		http.Error(w, "Failed to produce message to Kafka topic", http.StatusInternalServerError)
 		return
 	}
-
-	// в docker-compose при диплое образа kafka manager проверяем есть ли topic или при рестарте создаем topic из config
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
