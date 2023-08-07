@@ -1,9 +1,16 @@
-package httpserver
+package server
 
 import (
 	"context"
-
+	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/menyasosali/mts/internal/server/gateway"
+	pb "github.com/menyasosali/mts/pkg/gen"
+	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/h2c"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/menyasosali/mts/pkg/logger"
@@ -22,12 +29,21 @@ type Server struct {
 	shutdownTimeout time.Duration
 }
 
-func NewServer(ctx context.Context, logger logger.Interface, handler http.Handler, opts ...Option) *Server {
+func NewServer(ctx context.Context, log logger.Interface, service *gateway.Service, opts ...Option) *Server {
+	grpcServer := grpc.NewServer()
+	grpcOpts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
+	gwmux := runtime.NewServeMux()
+	pb.RegisterGatewayServer(grpcServer, service)
+	gwmux.HandlePath("POST", "/images/upload", service.UploadImageHandler)
+
+	mux := http.NewServeMux()
+	mux.Handle("/", gwmux)
+
 	httpServer := &http.Server{
-		Handler:      handler,
 		ReadTimeout:  _defaultReadTimeout,
 		WriteTimeout: _defaultWriteTimeout,
 		Addr:         _defaultAddr,
+		Handler:      grpcHandlerFunc(grpcServer, mux),
 	}
 
 	s := &Server{
@@ -40,7 +56,9 @@ func NewServer(ctx context.Context, logger logger.Interface, handler http.Handle
 		opt(s)
 	}
 
-	s.start(ctx, logger)
+	pb.RegisterGatewayHandlerFromEndpoint(ctx, gwmux, httpServer.Addr, grpcOpts)
+
+	s.start(ctx, log)
 
 	return s
 }
@@ -83,4 +101,14 @@ func (s *Server) Shutdown() error {
 	defer cancel()
 
 	return s.server.Shutdown(ctx)
+}
+
+func grpcHandlerFunc(grpcServer *grpc.Server, otherHandler http.Handler) http.Handler {
+	return h2c.NewHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.ProtoMajor == 2 && strings.Contains(r.Header.Get("Content-Type"), "application/grpc") {
+			grpcServer.ServeHTTP(w, r)
+		} else {
+			otherHandler.ServeHTTP(w, r)
+		}
+	}), &http2.Server{})
 }
